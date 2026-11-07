@@ -98,3 +98,25 @@ Many online examples, Context7's included, show the VSTest form `dotnet test -- 
 
 - **Browser install** works through `bin/<cfg>/<tfm>/playwright.ps1 install chromium` on **Windows PowerShell 5.1** as well as on pwsh 7. The script's `pwsh` shebang does not matter when it is called as `powershell.exe -File`. The C# fallback planned for this case is not needed.
 - **xunit.v3** does not add a global `using Xunit;`. The template must add it, either in code or with `<Using Include="Xunit" />`.
+
+## Claude Code hooks (verified live, Claude Code 2.1.319, Windows 11, 2026-11-08)
+
+The harness hooks in `templates/settings.harness.json` use the **exec form**: `"command": "dotnet"` with `"args": ["${CLAUDE_PROJECT_DIR}/.harness/tools/bin/Harness.Tools.dll", "hook", "<mode>"]`. No shell is involved, so the same entry works whether Claude Code would use Git Bash or PowerShell. `dotnet.exe` is a real executable, which exec form requires on Windows.
+
+Checked in a scratch project installed with `setup.ps1` and run through `claude -p`:
+
+| Hook | Evidence |
+|---|---|
+| `session-start` | The "Harness reminders:" text reached the model as context. This also shows that **`${CLAUDE_PROJECT_DIR}` is expanded inside `args`**, which the hooks docs do not state |
+| `pre-shell` | `git push origin main` was blocked. Claude saw `BLOCKED by harness pre-shell (push-default-branch): …`, and `hook-events.jsonl` recorded the deny |
+| `pre-write` | A write containing a `ghp_…` token was blocked (`github-token`) and the file was not created |
+| `post-edit` | Writing a page that calls `Thread.Sleep` gave Claude the `no-hard-wait` finding as feedback ("hook blocking error" on PostToolUse); the file was kept |
+| `session-end` | `sessions.jsonl` got one row per session, with deny and ask counts |
+
+`post-shell` and `pre-compact` were not triggered live; their behaviour is covered by unit tests.
+
+Other facts found on the way:
+
+- In `--allowedTools` and permission rules, **file allow rules must be written as `Edit(path)`**. `Write(path)` is not matched by file permission checks, and Claude Code says so.
+- A nested `claude -p` session starts in the user's default permission mode (here, plan mode), so live tests pass `--permission-mode default` with scoped `--allowedTools`. `bypassPermissions` is not needed.
+- PostToolUse exit 2 shows stderr to Claude and does not undo the tool call. This matches the docs.

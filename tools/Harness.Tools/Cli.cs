@@ -1,5 +1,6 @@
 using Harness.Tools.Conventions;
 using Harness.Tools.Hooks;
+using Harness.Tools.Installing;
 using Harness.Tools.Scaffolding;
 
 namespace Harness.Tools;
@@ -19,6 +20,13 @@ internal static class Cli
                                  --target-framework <tfm>          (default net10.0)
                                  --output <dir>                    (default: current directory)
                                  --templates <dir>                 (default: found above the tool)
+          install              Record .harness/project.json and merge the harness hooks into
+                               .claude/settings.json (user entries are kept). Safe to re-run:
+                                 --root <dir>                      (default: current directory)
+                                 --framework <nunit|xunit|mstest>  (default: from project.json)
+                                 --name <Name>                     (default: from project.json or folder)
+                                 --target-framework <tfm>          (default: from project.json or net10.0)
+                                 --settings-template <file>        (default: templates/settings.harness.json)
         {{ConventionCommand.Usage.TrimEnd()}}
           traceability         Planned
           ci-summary           Planned
@@ -55,6 +63,8 @@ internal static class Cli
                 return ConventionCommand.Run(rest, stdout, stderr);
             case "scaffold":
                 return RunScaffold(rest, stdout, stderr);
+            case "install":
+                return RunInstall(rest, stdout, stderr);
             default:
                 if (PlannedCommands.Contains(command, StringComparer.Ordinal))
                 {
@@ -65,6 +75,41 @@ internal static class Cli
                 stderr.WriteLine($"Unknown command '{command}'.");
                 stderr.WriteLine(UsageText);
                 return ExitCodes.Usage;
+        }
+    }
+
+    private static int RunInstall(string[] args, TextWriter stdout, TextWriter stderr)
+    {
+        if (!TryParseOptions(args, ["--root", "--framework", "--name", "--target-framework", "--settings-template"], out var values, out var error))
+        {
+            stderr.WriteLine(error);
+            return ExitCodes.Usage;
+        }
+
+        var template = values.GetValueOrDefault("--settings-template")
+            ?? (TemplateLocator.Find(AppContext.BaseDirectory) is { } templates ? Path.Combine(templates, "settings.harness.json") : null);
+        if (template is null)
+        {
+            stderr.WriteLine("No templates/ folder found above the tool. Pass --settings-template <file>.");
+            return ExitCodes.Failed;
+        }
+
+        try
+        {
+            var result = Installer.Run(new InstallOptions(
+                values.GetValueOrDefault("--root") ?? Directory.GetCurrentDirectory(),
+                values.GetValueOrDefault("--framework"),
+                values.GetValueOrDefault("--name"),
+                values.GetValueOrDefault("--target-framework"),
+                template));
+            stdout.WriteLine($"Project settings: {result.ProjectJson}");
+            stdout.WriteLine($"Hooks: {result.HarnessHandlers} harness hooks merged into {result.Settings} ({result.UserHandlers} of your own kept).");
+            return ExitCodes.Ok;
+        }
+        catch (InstallException ex)
+        {
+            stderr.WriteLine(ex.Message);
+            return ExitCodes.Failed;
         }
     }
 

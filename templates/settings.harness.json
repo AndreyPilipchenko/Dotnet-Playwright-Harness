@@ -1,0 +1,63 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "dotnet", "args": ["${CLAUDE_PROJECT_DIR}/.harness/tools/bin/Harness.Tools.dll", "hook", "session-start"], "timeout": 10 }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          { "type": "command", "command": "dotnet", "args": ["${CLAUDE_PROJECT_DIR}/.harness/tools/bin/Harness.Tools.dll", "hook", "pre-shell"], "timeout": 10 }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          { "type": "command", "command": "dotnet", "args": ["${CLAUDE_PROJECT_DIR}/.harness/tools/bin/Harness.Tools.dll", "hook", "pre-write"], "timeout": 10 }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          { "type": "command", "command": "dotnet", "args": ["${CLAUDE_PROJECT_DIR}/.harness/tools/bin/Harness.Tools.dll", "hook", "post-shell"], "timeout": 10 }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          { "type": "command", "command": "dotnet", "args": ["${CLAUDE_PROJECT_DIR}/.harness/tools/bin/Harness.Tools.dll", "hook", "post-edit"], "timeout": 30 }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          { "type": "command", "command": "dotnet", "args": ["${CLAUDE_PROJECT_DIR}/.harness/tools/bin/Harness.Tools.dll", "hook", "pre-compact"], "timeout": 10 }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          { "type": "command", "command": "dotnet", "args": ["${CLAUDE_PROJECT_DIR}/.harness/tools/bin/Harness.Tools.dll", "hook", "session-end"], "timeout": 5 }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./**/*.pfx)",
+      "Read(./**/*.pem)",
+      "Read(./**/*.key)",
+      "Read(./**/.auth/**)"
+    ]
+  }
+}
