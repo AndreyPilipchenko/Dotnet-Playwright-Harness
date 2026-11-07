@@ -27,26 +27,34 @@ internal static partial class Scaffolder
 
     private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
 
+    /// <summary>Checks the project settings shared by scaffold and install; returns the framework in lower case.</summary>
+    public static string Validate(string framework, string name, string targetFramework)
+    {
+        var normalized = framework.ToLowerInvariant();
+        if (!Frameworks.Contains(normalized))
+        {
+            throw new ScaffoldException(
+                $"Unknown framework '{framework}'. Use one of: {string.Join(", ", Frameworks)}.");
+        }
+
+        if (!NamePattern().IsMatch(name))
+        {
+            throw new ScaffoldException(
+                $"'{name}' is not a valid project name. Use dotted C# identifiers, for example Acme.Shop.");
+        }
+
+        if (!TargetFrameworkPattern().IsMatch(targetFramework))
+        {
+            throw new ScaffoldException(
+                $"'{targetFramework}' is not a supported target framework. Use the form net10.0.");
+        }
+
+        return normalized;
+    }
+
     public static IReadOnlyList<string> Run(ScaffoldOptions options)
     {
-        var framework = options.Framework.ToLowerInvariant();
-        if (!Frameworks.Contains(framework))
-        {
-            throw new ScaffoldException(
-                $"Unknown framework '{options.Framework}'. Use one of: {string.Join(", ", Frameworks)}.");
-        }
-
-        if (!NamePattern().IsMatch(options.Name))
-        {
-            throw new ScaffoldException(
-                $"'{options.Name}' is not a valid project name. Use dotted C# identifiers, for example Acme.Shop.");
-        }
-
-        if (!TargetFrameworkPattern().IsMatch(options.TargetFramework))
-        {
-            throw new ScaffoldException(
-                $"'{options.TargetFramework}' is not a supported target framework. Use the form net10.0.");
-        }
+        var framework = Validate(options.Framework, options.Name, options.TargetFramework);
 
         var tokens = new Dictionary<string, string>(StringComparer.Ordinal)
         {

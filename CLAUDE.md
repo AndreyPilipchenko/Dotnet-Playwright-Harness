@@ -4,9 +4,11 @@ This repo is a Claude Code harness for building Playwright + C#/.NET test framew
 
 ## Layout
 
-- `tools/Harness.Tools/`: C# console app (net10.0): hooks, `scaffold`, and later checks and reports. It is self-contained (`tools/Directory.*.props`), because its source is copied into consumer projects under `.harness/tools/`.
+- `tools/Harness.Tools/`: C# console app (net10.0): hooks, `scaffold`, `check-conventions`, `install`, and later reports. It is self-contained (`tools/Directory.*.props`), because its source is copied into consumer projects under `.harness/tools/`.
 - `tools/Harness.Tools.Tests/`: xUnit v3 tests. They use the real `templates/` folder.
 - `templates/`: rendered by `scaffold` in three layers: `build/` (repo root files), `framework/` (the framework-neutral `src/<Name>.Framework`), then `nunit/`, `xunit/` or `mstest/`. Placeholders are `__Name__` in paths, a `dot.` prefix for dotfiles, and `{{Name}}`, `{{TargetFramework}}`, `{{Framework}}` in contents. Unknown placeholders fail the scaffold.
+- `templates/settings.harness.json`: the hook and deny block that `install` merges into a project's `.claude/settings.json`. It is not a scaffold layer.
+- `scripts/`: `setup.ps1` and `update.ps1` copy the payload into a project (tracked by `.harness/manifest.json`, so local changes are never overwritten), build the tool and run `install`. `scripts/tests/Test-Setup.ps1` checks both scripts end to end.
 - `docs/`: `framework-matrix.md` (versions and behaviour verified by spike) and `external-tools.md` (vetting record). Treat both as the source of truth for package versions and commands.
 
 ## Commands
@@ -14,6 +16,13 @@ This repo is a Claude Code harness for building Playwright + C#/.NET test framew
 ```powershell
 dotnet build Harness.slnx
 dotnet test --project tools/Harness.Tools.Tests/Harness.Tools.Tests.csproj --report-trx --results-directory artifacts/test-results
+```
+
+Check the setup scripts on both editions:
+
+```powershell
+powershell -NoProfile -NonInteractive -File scripts/tests/Test-Setup.ps1
+pwsh -NoProfile -NonInteractive -File scripts/tests/Test-Setup.ps1
 ```
 
 End-to-end check of the templates: scaffold into a scratch folder (never into this repo), build, install Chromium with `bin/<cfg>/<tfm>/playwright.ps1 install chromium`, then run `dotnet test --project tests/<Name>.Tests/<Name>.Tests.csproj --report-trx`.
