@@ -77,6 +77,23 @@ Notes:
 
 The xUnit preview reports the test name as the fully qualified method name (`SpikeXunit.LoginTests.ShowsGreetingAsync`).
 
+## Browser and launch configuration under MTP
+
+**The `.runsettings` `<Playwright>` section does not work under native MTP.** It was tested with `BrowserName=webkit`, where WebKit was not installed, so a working setting would make the tests fail:
+
+| Framework | Result with `--settings probe.runsettings` |
+|---|---|
+| NUnit, MSTest | **The setting is ignored without any message.** Tests still ran on Chromium and passed |
+| xUnit | `--settings` is rejected (exit code 5) |
+
+**The `BROWSER` environment variable works on all three:** each failed with `Executable doesn't exist … webkit-2370`. That is why templates configure the browser this way:
+
+- Use the `BROWSER` and `HEADED` environment variables, set by CI, the local run script or `launchSettings`.
+- Set context and launch options in code, by overriding `ContextOptions()` in the single base class for each framework.
+- Do not use runsettings.
+
+Many online examples, Context7's included, show the VSTest form `dotnet test -- Playwright.BrowserName=…`. That form does not apply here, and skills must say so.
+
 ## Other verified facts
 
 - **Browser install** works through `bin/<cfg>/<tfm>/playwright.ps1 install chromium` on **Windows PowerShell 5.1** as well as on pwsh 7. The script's `pwsh` shebang does not matter when it is called as `powershell.exe -File`. The C# fallback planned for this case is not needed.
