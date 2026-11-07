@@ -41,7 +41,6 @@ public class CliTests
     }
 
     [Theory]
-    [InlineData("check-conventions")]
     [InlineData("traceability")]
     [InlineData("ci-summary")]
     [InlineData("dashboard")]

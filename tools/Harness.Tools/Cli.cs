@@ -1,3 +1,4 @@
+using Harness.Tools.Conventions;
 using Harness.Tools.Hooks;
 using Harness.Tools.Scaffolding;
 
@@ -6,7 +7,7 @@ namespace Harness.Tools;
 /// <summary>Routes the first argument to a command.</summary>
 internal static class Cli
 {
-    private const string UsageText = """
+    private static readonly string UsageText = $$"""
         Usage: Harness.Tools <command> [options]
 
         Commands:
@@ -18,7 +19,7 @@ internal static class Cli
                                  --target-framework <tfm>          (default net10.0)
                                  --output <dir>                    (default: current directory)
                                  --templates <dir>                 (default: found above the tool)
-          check-conventions    Planned
+        {{ConventionCommand.Usage.TrimEnd()}}
           traceability         Planned
           ci-summary           Planned
           dashboard            Planned
@@ -29,7 +30,7 @@ internal static class Cli
 
     private static readonly string[] PlannedCommands =
     [
-        "check-conventions", "traceability", "ci-summary", "dashboard", "secret-scan", "tracker", "validate-skills",
+        "traceability", "ci-summary", "dashboard", "secret-scan", "tracker", "validate-skills",
     ];
 
     public static int Run(IReadOnlyList<string> args, TextReader stdin, TextWriter stdout, TextWriter stderr)
@@ -50,6 +51,8 @@ internal static class Cli
                 return ExitCodes.Ok;
             case "hook":
                 return HookRunner.Run(rest.FirstOrDefault(), stdin, stdout, stderr);
+            case "check-conventions":
+                return ConventionCommand.Run(rest, stdout, stderr);
             case "scaffold":
                 return RunScaffold(rest, stdout, stderr);
             default:
