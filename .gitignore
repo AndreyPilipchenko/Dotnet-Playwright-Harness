@@ -1,0 +1,16 @@
+# Build output
+bin/
+obj/
+artifacts/
+*.user
+.vs/
+.vscode/
+.idea/
+
+# Test output
+TestResults/
+allure-results/
+
+# Local harness state
+.harness/state/
+.playwright-cli/
