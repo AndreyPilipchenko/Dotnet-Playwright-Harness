@@ -14,6 +14,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- One JSON file per test class; TestData.Load reads them from testData/ next to the binaries. -->
+    <None Include="..\..\resources\testData\**\*.json" LinkBase="testData" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\{{Name}}.Framework\{{Name}}.Framework.csproj" />
   </ItemGroup>
 

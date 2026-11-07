@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Harness.Tools.Conventions;
 
 namespace Harness.Tools.Hooks;
 
@@ -93,7 +94,50 @@ internal static class HookModes
             ctx.State.WriteLedger(ctx.SessionId, ledger with { EditsSinceFail = true });
         }
 
-        return HookDecision.Allow;
+        return LintConventions(input, path);
+    }
+
+    /// <summary>
+    /// Runs the convention rules on the edited file. New findings go back to Claude as feedback
+    /// (exit 2 after the edit, which keeps the edit); legacy findings stay quiet. Warn-only: any
+    /// problem running the check allows silently.
+    /// </summary>
+    private static HookDecision LintConventions(HookInput input, string path)
+    {
+        var root = input.Context.ProjectRoot;
+        var full = Path.GetFullPath(Path.Combine(root, path));
+        var relative = Path.GetRelativePath(root, full).Replace('\\', '/');
+        if (LayerMap.Of(relative) == Layer.None || !File.Exists(full))
+        {
+            return HookDecision.Allow;
+        }
+
+        ConventionReport report;
+        try
+        {
+            report = ConventionChecker.Run(root, [relative]);
+        }
+        catch (ConventionException)
+        {
+            return HookDecision.Allow;
+        }
+
+        var fresh = report.Findings.Where(f => !f.Legacy).ToList();
+        if (fresh.Count == 0)
+        {
+            return HookDecision.Allow;
+        }
+
+        input.Context.State.AppendEvent(input.Context.SessionId, input.Mode, "feedback", "conventions", input.Context.Services.Now());
+        input.Err.WriteLine(
+            $"Harness convention check (warn-only, the edit was kept): {relative} has {fresh.Count} finding(s). " +
+            "Fix them now, or mark a deliberate exception with '// conventions-ok: <reason>'.");
+        foreach (var f in fresh)
+        {
+            input.Err.WriteLine($"  {f.Severity.ToString().ToUpperInvariant()}  line {f.Line}  [{f.Rule}] {f.Why}");
+        }
+
+        return HookDecision.Block;
     }
 
     public static HookDecision PreWrite(HookInput input)

@@ -11,6 +11,9 @@ internal static class ExitCodes
     /// <summary>The command ran and found problems, or could not do its job.</summary>
     public const int Failed = 1;
 
+    /// <summary>A check could not run as asked (for example, nothing to check). Never a pass.</summary>
+    public const int NotChecked = 2;
+
     /// <summary>The command line was wrong (EX_USAGE).</summary>
     public const int Usage = 64;
 }

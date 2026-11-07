@@ -16,6 +16,8 @@ public class ScaffolderTests
         "Acme.Shop.slnx",
         "src/Acme.Shop.Framework/Acme.Shop.Framework.csproj",
         "src/Acme.Shop.Framework/Pages/GreetingPage.cs",
+        "src/Acme.Shop.Framework/Utils/TestData.cs",
+        "resources/testData/GreetingTestData.json",
         "tests/Acme.Shop.Tests/Acme.Shop.Tests.csproj",
         "tests/Acme.Shop.Tests/Setup/UiTest.cs",
         "tests/Acme.Shop.Tests/Ui/GreetingTests.cs",
