@@ -8,8 +8,8 @@ internal enum HookDecision
     Block,
 }
 
-/// <summary>What a hook handler gets: the parsed Claude Code payload and writers for its output.</summary>
-internal sealed record HookInput(string Mode, JsonElement Payload, TextWriter Out, TextWriter Err);
+/// <summary>What a hook handler gets: the parsed Claude Code payload, writers for its output, and its context.</summary>
+internal sealed record HookInput(string Mode, JsonElement Payload, TextWriter Out, TextWriter Err, HookContext Context);
 
 internal delegate HookDecision HookHandler(HookInput input);
 
@@ -25,13 +25,13 @@ internal static class HookRunner
 
     private static readonly Dictionary<string, HookHandler> DefaultHandlers = new(StringComparer.Ordinal)
     {
-        ["session-start"] = Allow,
-        ["pre-shell"] = Allow,
-        ["post-shell"] = Allow,
-        ["post-edit"] = Allow,
-        ["pre-write"] = Allow,
-        ["pre-compact"] = Allow,
-        ["session-end"] = Allow,
+        ["session-start"] = HookModes.SessionStart,
+        ["pre-shell"] = HookModes.PreShell,
+        ["post-shell"] = HookModes.PostShell,
+        ["post-edit"] = HookModes.PostEdit,
+        ["pre-write"] = HookModes.PreWrite,
+        ["pre-compact"] = HookModes.PreCompact,
+        ["session-end"] = HookModes.SessionEnd,
     };
 
     public static IReadOnlyCollection<string> Modes => DefaultHandlers.Keys;
@@ -41,11 +41,13 @@ internal static class HookRunner
         TextReader stdin,
         TextWriter stdout,
         TextWriter stderr,
+        HookServices? services = null,
         IReadOnlyDictionary<string, HookHandler>? handlers = null)
     {
         try
         {
             handlers ??= DefaultHandlers;
+            services ??= HookServices.System;
             if (mode is null || !handlers.TryGetValue(mode, out var handler))
             {
                 stderr.WriteLine($"harness hook: unknown mode '{mode}', allowing.");
@@ -57,9 +59,14 @@ internal static class HookRunner
                 return AllowCode;
             }
 
+            var context = new HookContext(
+                services,
+                ProjectRoot(services, payload),
+                HookModes.String(payload, "session_id") ?? "unknown");
+
             // Buffer stdout so a handler that fails half-way leaves nothing behind.
             using var buffer = new StringWriter();
-            var decision = handler(new HookInput(mode, payload, buffer, stderr));
+            var decision = handler(new HookInput(mode, payload, buffer, stderr, context));
             stdout.Write(buffer.ToString());
             return decision == HookDecision.Block ? BlockCode : AllowCode;
         }
@@ -72,7 +79,17 @@ internal static class HookRunner
         }
     }
 
-    private static HookDecision Allow(HookInput input) => HookDecision.Allow;
+    /// <summary>CLAUDE_PROJECT_DIR (set by Claude Code for hooks), else the event's cwd, else the process's.</summary>
+    private static string ProjectRoot(HookServices services, JsonElement payload)
+    {
+        var fromEnv = services.GetEnv("CLAUDE_PROJECT_DIR");
+        if (!string.IsNullOrWhiteSpace(fromEnv))
+        {
+            return fromEnv;
+        }
+
+        return HookModes.String(payload, "cwd") ?? Directory.GetCurrentDirectory();
+    }
 
     private static bool TryReadPayload(TextReader stdin, out JsonElement payload)
     {

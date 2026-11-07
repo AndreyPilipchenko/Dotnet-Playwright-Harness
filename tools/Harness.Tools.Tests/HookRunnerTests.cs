@@ -10,14 +10,13 @@ public class HookRunnerTests
 
     [Theory]
     [MemberData(nameof(Modes))]
-    public void EveryMode_AllowsByDefault_WithNoOutput(string mode)
+    public void EveryMode_AllowsAHarmlessEvent(string mode)
     {
-        var io = Console3.WithInput(ShellInput);
+        using var host = new Hooks.HookTestHost();
 
-        var code = HookRunner.Run(mode, io.In, io.Out, io.Err);
+        var result = host.Run(mode, """{"session_id":"s","tool_name":"Read","tool_input":{"file_path":"a.cs"}}""");
 
-        Assert.Equal(0, code);
-        Assert.Equal(string.Empty, io.Out.ToString());
+        Assert.Equal(0, result.Code);
     }
 
     [Fact]
@@ -70,7 +69,7 @@ public class HookRunnerTests
             },
         };
 
-        var code = HookRunner.Run("pre-shell", io.In, io.Out, io.Err, handlers);
+        var code = HookRunner.Run("pre-shell", io.In, io.Out, io.Err, handlers: handlers);
 
         Assert.Equal(0, code);
         Assert.Equal(string.Empty, io.Out.ToString());
@@ -90,7 +89,7 @@ public class HookRunnerTests
             },
         };
 
-        var code = HookRunner.Run("pre-shell", io.In, io.Out, io.Err, handlers);
+        var code = HookRunner.Run("pre-shell", io.In, io.Out, io.Err, handlers: handlers);
 
         Assert.Equal(2, code);
         Assert.Equal("blocked: reason", io.Err.ToString());
@@ -110,7 +109,7 @@ public class HookRunnerTests
             },
         };
 
-        HookRunner.Run("pre-shell", io.In, io.Out, io.Err, handlers);
+        HookRunner.Run("pre-shell", io.In, io.Out, io.Err, handlers: handlers);
 
         Assert.Equal("Bash", seenTool);
     }
@@ -128,7 +127,7 @@ public class HookRunnerTests
             },
         };
 
-        var code = HookRunner.Run("session-start", io.In, io.Out, io.Err, handlers);
+        var code = HookRunner.Run("session-start", io.In, io.Out, io.Err, handlers: handlers);
 
         Assert.Equal(0, code);
         Assert.Equal("reminder", io.Out.ToString());
