@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Framework-neutral layer: pages, API clients, database helpers and utilities.
+    It must never reference NUnit, xUnit or MSTest; only the test project does.
+  -->
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Playwright" />
+  </ItemGroup>
+
+</Project>

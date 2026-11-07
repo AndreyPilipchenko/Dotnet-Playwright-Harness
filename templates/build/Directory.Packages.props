@@ -1,0 +1,28 @@
+<Project>
+  <!--
+    The approved package list. Versions are verified in the harness's docs/framework-matrix.md.
+    Adding a package that is not listed here needs the user's approval.
+  -->
+  <ItemGroup Label="Playwright">
+    <PackageVersion Include="Microsoft.Playwright" Version="1.64.1" />
+    <PackageVersion Include="Microsoft.Playwright.NUnit" Version="1.64.1" />
+    <PackageVersion Include="Microsoft.Playwright.Xunit.v3" Version="1.64.1" />
+    <PackageVersion Include="Microsoft.Playwright.MSTest.v4" Version="1.64.1" />
+  </ItemGroup>
+  <ItemGroup Label="Test platform">
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+    <PackageVersion Include="Microsoft.Testing.Extensions.TrxReport" Version="2.5.2" />
+  </ItemGroup>
+  <ItemGroup Label="NUnit">
+    <PackageVersion Include="NUnit" Version="5.0.0" />
+    <PackageVersion Include="NUnit3TestAdapter" Version="6.3.1" />
+    <PackageVersion Include="NUnit.Analyzers" Version="4.15.0" />
+  </ItemGroup>
+  <ItemGroup Label="xUnit">
+    <PackageVersion Include="xunit.v3" Version="4.0.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
+  </ItemGroup>
+  <ItemGroup Label="MSTest">
+    <PackageVersion Include="MSTest" Version="4.5.2" />
+  </ItemGroup>
+</Project>

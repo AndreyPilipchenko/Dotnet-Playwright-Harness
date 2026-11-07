@@ -1,0 +1,15 @@
+# Build output
+bin/
+obj/
+*.user
+.vs/
+.idea/
+
+# Test output
+TestResults/
+allure-results/
+playwright-traces/
+
+# Harness: local state and the tool build (its source under .harness/tools/ is committed)
+.harness/state/
+.playwright-cli/
