@@ -40,16 +40,6 @@ public class CliTests
         Assert.Contains("frobnicate", io.Err.ToString(), StringComparison.Ordinal);
     }
 
-    [Theory]
-    [InlineData("validate-skills")]
-    public void PlannedCommand_IsRouted_ButReportsNotImplemented(string command)
-    {
-        var (code, io) = Run(command);
-
-        Assert.Equal(ExitCodes.Failed, code);
-        Assert.Contains("not implemented", io.Err.ToString(), StringComparison.Ordinal);
-    }
-
     [Fact]
     public void Hook_IsRoutedToHookRunner_AndFailsOpen()
     {

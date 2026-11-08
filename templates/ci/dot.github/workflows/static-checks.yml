@@ -1,0 +1,39 @@
+# Checks that need no browser and no application, on every pull request.
+
+name: Static checks
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build with warnings as errors
+        uses: ./.github/actions/setup-harness
+        with:
+          browser: none
+
+      - name: Check the framework conventions
+        run: dotnet .harness/tools/bin/Harness.Tools.dll check-conventions
+
+      # Exit 2 means the project has no QA records yet.
+      - name: Check the QA record links
+        run: dotnet .harness/tools/bin/Harness.Tools.dll traceability || [ $? -eq 2 ]
+
+      - name: Check the harness skills
+        run: dotnet .harness/tools/bin/Harness.Tools.dll validate-skills
+
+      # The listing's exit code says nothing about findings, so package-report reads its JSON.
+      - name: Check for vulnerable packages
+        run: |
+          mkdir -p TestResults/packages
+          dotnet package list --vulnerable --include-transitive --format json > TestResults/packages/vulnerable.json || true
+          dotnet .harness/tools/bin/Harness.Tools.dll package-report --input TestResults/packages/vulnerable.json

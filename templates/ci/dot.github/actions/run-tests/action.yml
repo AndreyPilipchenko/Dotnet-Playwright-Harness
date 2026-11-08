@@ -1,0 +1,91 @@
+name: Run the tests
+description: Runs the tests, writes the summary, checks the results for secrets, publishes them, and gives the test run's verdict.
+
+inputs:
+  label:
+    description: Names the results folder, the artifact and the baseline
+    required: true
+  heading:
+    description: The heading of the summary
+    required: true
+  filter-option:
+    description: The dotnet test filter option, or empty to run everything
+    required: false
+    default: ''
+  filter-value:
+    description: The value for the filter option
+    required: false
+    default: ''
+  forbid-env:
+    description: Comma-separated names of variables whose values must not appear in the results
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Restore the previous outcomes
+      uses: actions/cache/restore@v6
+      with:
+        path: .ci-baseline
+        key: ci-baseline-${{ inputs.label }}-${{ github.run_id }}
+        restore-keys: ci-baseline-${{ inputs.label }}-
+
+    # A failing run must not stop the steps below, so the exit code is kept and given at the end.
+    - name: Run the tests
+      id: tests
+      shell: bash
+      env:
+        LABEL: ${{ inputs.label }}
+        FILTER_OPTION: ${{ inputs.filter-option }}
+        FILTER_VALUE: ${{ inputs.filter-value }}
+      run: |
+        set +e
+        filter=()
+        if [ -n "$FILTER_OPTION" ]; then filter=("$FILTER_OPTION" "$FILTER_VALUE"); fi
+        TRACE_DIR="$PWD/TestResults/$LABEL/traces" dotnet test \
+          --project tests/{{Name}}.Tests/{{Name}}.Tests.csproj \
+          -c Release --no-build --report-trx \
+          --results-directory "TestResults/$LABEL" "${filter[@]}"
+        echo "exit-code=$?" >> "$GITHUB_OUTPUT"
+
+    - name: Write the summary
+      id: summary
+      shell: bash
+      env:
+        LABEL: ${{ inputs.label }}
+        HEADING: ${{ inputs.heading }}
+      run: |
+        dotnet .harness/tools/bin/Harness.Tools.dll ci-summary \
+          --results "TestResults/$LABEL" --heading "$HEADING" \
+          --baseline ".ci-baseline/$LABEL.json" --update-baseline \
+          --json "TestResults/$LABEL/summary.json"
+
+    - name: Save this run's outcomes
+      if: steps.summary.outputs.baseline-updated == 'true'
+      uses: actions/cache/save@v6
+      with:
+        path: .ci-baseline
+        key: ci-baseline-${{ inputs.label }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+    # Results that hold a secret stop here, before anything is published.
+    - name: Check the results for secrets
+      shell: bash
+      env:
+        LABEL: ${{ inputs.label }}
+        FORBID_ENV: ${{ inputs.forbid-env }}
+      run: dotnet .harness/tools/bin/Harness.Tools.dll secret-scan --path "TestResults/$LABEL" --forbid-env "$FORBID_ENV"
+
+    - name: Publish the results
+      uses: actions/upload-artifact@v7
+      with:
+        name: results-${{ inputs.label }}
+        path: TestResults/${{ inputs.label }}
+        retention-days: 14
+        if-no-files-found: warn
+
+    - name: Give the test run's verdict
+      shell: bash
+      env:
+        TEST_EXIT: ${{ steps.tests.outputs.exit-code }}
+      run: exit "$TEST_EXIT"

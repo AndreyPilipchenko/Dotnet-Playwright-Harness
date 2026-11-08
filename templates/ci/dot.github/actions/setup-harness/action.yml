@@ -1,0 +1,31 @@
+name: Set up the harness
+description: Installs .NET, builds the harness tool and the solution, and installs a browser.
+
+inputs:
+  browser:
+    description: The browser to install, or none for a job that opens no browser
+    required: false
+    default: chromium
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-dotnet@v6
+      with:
+        global-json-file: global.json
+
+    # The tool's source is committed under .harness/tools; its build output is not.
+    - name: Build the harness tool
+      shell: bash
+      run: dotnet publish .harness/tools/Harness.Tools/Harness.Tools.csproj -c Release -o .harness/tools/bin --nologo -v quiet
+
+    - name: Build the solution
+      shell: bash
+      run: dotnet build -c Release --nologo -v quiet
+
+    - name: Install the browser and its system libraries
+      if: inputs.browser != 'none'
+      shell: pwsh
+      env:
+        PLAYWRIGHT_BROWSER: ${{ inputs.browser }}
+      run: ./tests/{{Name}}.Tests/bin/Release/{{TargetFramework}}/playwright.ps1 install --with-deps $env:PLAYWRIGHT_BROWSER

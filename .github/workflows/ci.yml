@@ -1,0 +1,107 @@
+# The harness's own checks: the tool's tests, the skills, the setup scripts, and that each
+# framework's skeleton builds and runs on Linux.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tool:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Build with warnings as errors
+        run: dotnet build Harness.slnx -c Release --nologo -v quiet
+
+      - name: Run the tool's tests
+        run: dotnet test --project tools/Harness.Tools.Tests/Harness.Tools.Tests.csproj -c Release --no-build --report-trx --results-directory TestResults/tool
+
+      - name: Check the skills and agents
+        run: dotnet run --project tools/Harness.Tools/Harness.Tools.csproj -c Release --no-build -- validate-skills
+
+      - name: Publish the results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: results-tool-${{ matrix.os }}
+          path: TestResults/tool
+          retention-days: 14
+          if-no-files-found: warn
+
+  # setup.ps1 and update.ps1 are Windows-only today, and must run on both PowerShell editions.
+  setup-scripts:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Check the setup scripts on Windows PowerShell 5.1
+        shell: powershell
+        run: powershell -NoProfile -NonInteractive -File scripts/tests/Test-Setup.ps1
+
+      - name: Check the setup scripts on PowerShell 7
+        shell: pwsh
+        run: pwsh -NoProfile -NonInteractive -File scripts/tests/Test-Setup.ps1
+
+  skeleton:
+    strategy:
+      fail-fast: false
+      matrix:
+        framework: [nunit, xunit, mstest]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PROJECT: ${{ github.workspace }}/../generated
+      FRAMEWORK: ${{ matrix.framework }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Generate the skeleton
+        run: |
+          mkdir -p "$PROJECT"
+          dotnet run --project tools/Harness.Tools/Harness.Tools.csproj -c Release -- \
+            scaffold --framework "$FRAMEWORK" --name Acme.Shop --output "$PROJECT" --templates templates
+
+      - name: Build with warnings as errors
+        working-directory: ${{ env.PROJECT }}
+        run: dotnet build -c Release --nologo -v quiet
+
+      - name: Install Chromium and its system libraries
+        working-directory: ${{ env.PROJECT }}
+        shell: pwsh
+        run: ./tests/Acme.Shop.Tests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+
+      - name: Run the sample test
+        working-directory: ${{ env.PROJECT }}
+        run: dotnet test --project tests/Acme.Shop.Tests/Acme.Shop.Tests.csproj -c Release --no-build --report-trx --results-directory TestResults/skeleton
+
+      - name: Summarize the results
+        if: ${{ !cancelled() }}
+        env:
+          REPO: ${{ github.workspace }}
+        run: dotnet run --project "$REPO/tools/Harness.Tools/Harness.Tools.csproj" -c Release --no-build -- ci-summary --results "$PROJECT/TestResults/skeleton" --heading "Skeleton on $FRAMEWORK"

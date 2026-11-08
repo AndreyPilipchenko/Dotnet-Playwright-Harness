@@ -1,9 +1,12 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Harness.Tools.Conventions;
 using Harness.Tools.Hooks;
 using Harness.Tools.Installing;
 using Harness.Tools.Reports;
 using Harness.Tools.Scaffolding;
 using Harness.Tools.Scratch;
+using Harness.Tools.Skills;
 using Harness.Tools.Traceability;
 
 namespace Harness.Tools;
@@ -23,7 +26,11 @@ internal static class Cli
                                  --target-framework <tfm>          (default net10.0)
                                  --output <dir>                    (default: current directory)
                                  --templates <dir>                 (default: found above the tool)
-          install              Record .harness/project.json and merge the harness hooks into
+          scaffold-ci          Render the GitHub Actions workflows into a project where the harness is installed.
+                               Existing files are never overwritten:
+                                 --root <dir>                      (default: current directory)
+                                 --templates <dir>                 (default: found above the tool)
+          install           Record .harness/project.json and merge the harness hooks into
                                .claude/settings.json (user entries are kept). Safe to re-run:
                                  --root <dir>                      (default: current directory)
                                  --framework <nunit|xunit|mstest>  (default: from project.json)
@@ -38,13 +45,8 @@ internal static class Cli
         {{PackageReportCommand.Usage.TrimEnd()}}
         {{DashboardCommand.Usage.TrimEnd()}}
         {{TrackerCommand.Usage.TrimEnd()}}
-          validate-skills      Planned
+        {{ValidateSkillsCommand.Usage.TrimEnd()}}
         """;
-
-    private static readonly string[] PlannedCommands =
-    [
-        "validate-skills",
-    ];
 
     public static int Run(IReadOnlyList<string> args, TextReader stdin, TextWriter stdout, TextWriter stderr)
     {
@@ -82,15 +84,13 @@ internal static class Cli
                 return TrackerCommand.Run(rest, stdout, stderr);
             case "scaffold":
                 return RunScaffold(rest, stdout, stderr);
+            case "scaffold-ci":
+                return RunScaffoldCi(rest, stdout, stderr);
             case "install":
                 return RunInstall(rest, stdout, stderr);
+            case "validate-skills":
+                return ValidateSkillsCommand.Run(rest, stdout, stderr);
             default:
-                if (PlannedCommands.Contains(command, StringComparer.Ordinal))
-                {
-                    stderr.WriteLine($"'{command}' is not implemented yet.");
-                    return ExitCodes.Failed;
-                }
-
                 stderr.WriteLine($"Unknown command '{command}'.");
                 stderr.WriteLine(UsageText);
                 return ExitCodes.Usage;
@@ -164,6 +164,59 @@ internal static class Cli
         {
             var written = Scaffolder.Run(options);
             stdout.WriteLine($"Scaffolded {written.Count} files into {options.OutputDirectory}:");
+            foreach (var file in written)
+            {
+                stdout.WriteLine("  " + file);
+            }
+
+            return ExitCodes.Ok;
+        }
+        catch (ScaffoldException ex)
+        {
+            stderr.WriteLine(ex.Message);
+            return ExitCodes.Failed;
+        }
+    }
+
+    private static int RunScaffoldCi(string[] args, TextWriter stdout, TextWriter stderr)
+    {
+        if (!TryParseOptions(args, ["--root", "--templates"], out var values, out var error))
+        {
+            stderr.WriteLine(error);
+            return ExitCodes.Usage;
+        }
+
+        var root = Path.GetFullPath(values.GetValueOrDefault("--root") ?? Directory.GetCurrentDirectory());
+        var projectFile = Path.Combine(root, ".harness", "project.json");
+        JsonNode? project = null;
+        try
+        {
+            project = File.Exists(projectFile) ? JsonNode.Parse(File.ReadAllText(projectFile)) : null;
+        }
+        catch (JsonException)
+        {
+            // Reported below, as a project file that says nothing.
+        }
+
+        if (project?["framework"]?.GetValue<string>() is not { } framework
+            || project["name"]?.GetValue<string>() is not { } name
+            || project["targetFramework"]?.GetValue<string>() is not { } targetFramework)
+        {
+            stderr.WriteLine($"{projectFile} is missing or incomplete. Install the harness first with setup.ps1.");
+            return ExitCodes.Failed;
+        }
+
+        var templates = values.GetValueOrDefault("--templates") ?? TemplateLocator.Find(AppContext.BaseDirectory);
+        if (templates is null)
+        {
+            stderr.WriteLine("No templates/ folder found above the tool. Pass --templates <dir>.");
+            return ExitCodes.Failed;
+        }
+
+        try
+        {
+            var written = Scaffolder.RunCi(new ScaffoldOptions(framework, name, targetFramework, root, templates));
+            stdout.WriteLine($"Wrote {written.Count} files into {root}:");
             foreach (var file in written)
             {
                 stdout.WriteLine("  " + file);

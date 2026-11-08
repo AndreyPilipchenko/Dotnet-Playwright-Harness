@@ -328,6 +328,17 @@ public class CiSummaryTests
     }
 
     [Fact]
+    public void NoEarlierResults_SaysNothing_WhenNothingFailed()
+    {
+        using var dir = new TempDir();
+        dir.Write("r/a.trx", TrxFixture.Run(Passing));
+
+        var (_, output, _) = Run(null, "--results", dir.Combine("r"), "--baseline", dir.Combine("none.json"));
+
+        Assert.DoesNotContain("every failure", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void BrokenBaseline_IsSaidPlainly_AndEveryFailureIsListed()
     {
         using var dir = new TempDir();

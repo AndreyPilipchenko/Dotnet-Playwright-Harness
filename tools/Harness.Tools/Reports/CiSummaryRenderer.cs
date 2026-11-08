@@ -65,7 +65,7 @@ internal static partial class CiSummaryRenderer
         }
         else
         {
-            if (state != BaselineState.NotRequested && run.Tests.Count > 0)
+            if (state != BaselineState.NotRequested && failed.Count > 0)
             {
                 Line(text, state == BaselineState.Broken
                     ? "Could not read the earlier results, so every failure is listed together."

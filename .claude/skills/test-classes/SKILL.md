@@ -1,6 +1,6 @@
 ---
 name: test-classes
-description: Use when creating, naming, structuring or reviewing a test class (a <Feature>Tests file) in a Playwright C# framework built with this harness on NUnit, xUnit or MSTest - its base class, data field, per-test setup and teardown of Api or Db classes, categories, where tests and hooks sit in the file, or splitting a large test class.
+description: Use when creating, naming, structuring or reviewing a test class (a FeatureTests file) in a Playwright C# framework built with this harness on NUnit, xUnit or MSTest - its base class, data field, per-test setup and teardown of Api or Db classes, categories, where tests and hooks sit in the file, or splitting a large test class.
 ---
 
 # Test classes

@@ -1,6 +1,6 @@
 ---
 name: service-classes
-description: Use when creating, extending or reviewing an Api or Db class (<Domain>Api, <Domain>Db) in a Playwright C# framework built with this harness - API requests through IAPIRequestContext, endpoints, database queries and parameters, seeding test data through the API or database, cleaning up created records in teardown, API or DB checks, or connecting with credentials from the environment.
+description: Use when creating, extending or reviewing an Api or Db class (OrdersApi, OrdersDb) in a Playwright C# framework built with this harness - API requests through IAPIRequestContext, endpoints, database queries and parameters, seeding test data through the API or database, cleaning up created records in teardown, API or DB checks, or connecting with credentials from the environment.
 ---
 
 # Service classes (Apis and Dbs)
