@@ -21,7 +21,11 @@ public sealed class GreetingPage
 
     private ILocator GreetingHeading => _page.GetByRole(AriaRole.Heading, new() { Level = 1 });
 
+    // Actions
+
     public Task NavigateAsync() => _page.SetContentAsync(Content);
+
+    // Validations
 
     public Task VerifyGreetingAsync(string expected) => Expect(GreetingHeading).ToHaveTextAsync(expected);
 }
