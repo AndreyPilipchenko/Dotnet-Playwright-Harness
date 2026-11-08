@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Xml;
 
 namespace Harness.Tools.Reports;
 
@@ -79,20 +78,12 @@ internal static class CiSummaryCommand
 
     private static string Summarize(string results, string heading, string? note, string? baselinePath, bool update, string? jsonPath, Func<string, string?> env)
     {
-        var files = File.Exists(results) ? [results]
-            : Directory.Exists(results) ? Directory.GetFiles(results, "*.trx", SearchOption.AllDirectories).Order(StringComparer.Ordinal).ToArray()
-            : [];
-        if (files.Length == 0)
+        if (TrxReader.Find(results).Length == 0)
         {
             return CiSummaryRenderer.Unavailable(heading, $"No TRX report at {results}.");
         }
 
-        TrxRun run;
-        try
-        {
-            run = TrxReader.Read(files);
-        }
-        catch (Exception ex) when (ex is XmlException or InvalidDataException or IOException or UnauthorizedAccessException)
+        if (TrxReader.TryRead(results) is not { } run)
         {
             return CiSummaryRenderer.Unavailable(heading, $"Could not read the TRX report at {results}.");
         }

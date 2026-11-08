@@ -11,7 +11,13 @@ internal enum TrxOutcome
     Skipped,
 }
 
-internal sealed record TrxTest(string Name, TrxOutcome Outcome, string? Message, IReadOnlyList<string> Bugs);
+internal sealed record TrxTest(
+    string Name,
+    TrxOutcome Outcome,
+    string? Message,
+    IReadOnlyList<string> Bugs,
+    IReadOnlyList<string> Cases,
+    string? ClassName);
 
 /// <summary>The tests of one or more TRX files. <see cref="RunProblem"/> is set when the run itself reported a failure.</summary>
 internal sealed record TrxRun(IReadOnlyList<TrxTest> Tests, TimeSpan Duration, string? RunProblem)
@@ -25,11 +31,34 @@ internal sealed record TrxRun(IReadOnlyList<TrxTest> Tests, TimeSpan Duration, s
 /// </summary>
 internal static class TrxReader
 {
-    private const string BugPrefix = "bug:";
-
     private static readonly XNamespace Ns = "http://microsoft.com/schemas/VisualStudio/TeamTest/2010";
 
     private static readonly string[] FailingOutcomes = ["Failed", "Error", "Timeout", "Aborted"];
+
+    /// <summary>The TRX files at a path: the file itself, or every <c>*.trx</c> below a folder.</summary>
+    public static string[] Find(string path) =>
+        File.Exists(path) ? [path]
+        : Directory.Exists(path) ? [.. Directory.GetFiles(path, "*.trx", SearchOption.AllDirectories).Order(StringComparer.Ordinal)]
+        : [];
+
+    /// <summary>Reads the TRX at a path. Null when there is none or it can't be read.</summary>
+    public static TrxRun? TryRead(string path)
+    {
+        var files = Find(path);
+        if (files.Length == 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            return Read(files);
+        }
+        catch (Exception ex) when (ex is XmlException or InvalidDataException or IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
 
     /// <exception cref="InvalidDataException">A file is not TRX.</exception>
     /// <exception cref="XmlException">A file is not well-formed XML, or holds a DTD.</exception>
@@ -83,19 +112,23 @@ internal static class TrxReader
         {
             definitions.TryGetValue((string?)result.Attribute("testId") ?? string.Empty, out var definition);
             var message = result.Element(Ns + "Output")?.Element(Ns + "ErrorInfo")?.Element(Ns + "Message")?.Value;
-            var bugs = definition?.Descendants(Ns + "TestCategoryItem")
+            var categories = definition?.Descendants(Ns + "TestCategoryItem")
                 .Select(c => (string?)c.Attribute("TestCategory") ?? string.Empty)
-                .Where(c => c.StartsWith(BugPrefix, StringComparison.OrdinalIgnoreCase))
-                .Select(c => c[BugPrefix.Length..])
                 .ToList() ?? [];
+            var className = (string?)definition?.Element(Ns + "TestMethod")?.Attribute("className");
 
             yield return new TrxTest(
-                FullName((string?)result.Attribute("testName") ?? "(unnamed)", (string?)definition?.Element(Ns + "TestMethod")?.Attribute("className")),
+                FullName((string?)result.Attribute("testName") ?? "(unnamed)", className),
                 OutcomeOf((string?)result.Attribute("outcome")),
                 string.IsNullOrWhiteSpace(message) ? null : message,
-                bugs);
+                Linked(categories, "bug:"),
+                Linked(categories, "tc:"),
+                className);
         }
     }
+
+    private static List<string> Linked(List<string> categories, string prefix) =>
+        [.. categories.Where(c => c.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).Select(c => c[prefix.Length..])];
 
     private static string FullName(string testName, string? className) =>
         string.IsNullOrEmpty(className) || testName.StartsWith(className + ".", StringComparison.Ordinal)

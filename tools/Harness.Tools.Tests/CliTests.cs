@@ -41,8 +41,6 @@ public class CliTests
     }
 
     [Theory]
-    [InlineData("dashboard")]
-    [InlineData("tracker")]
     [InlineData("validate-skills")]
     public void PlannedCommand_IsRouted_ButReportsNotImplemented(string command)
     {
