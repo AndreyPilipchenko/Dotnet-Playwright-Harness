@@ -120,9 +120,31 @@ Both packages depend on `playwright` **1.65.0-alpha-2026-10-30**. Neither has in
 | `fetch('https://example.com/')` from the allowed page | `Failed to fetch` |
 | `fetch` to the same origin from the allowed page | OK |
 
-- The harness ships this file, with the test environment's origin, as `templates/playwright-cli/cli.config.json`.
+- The harness ships this file, with the test environment's origin, as the automate-test asset `.claude/skills/automate-test/assets/cli.config.json`, which the skill copies to `.playwright/cli.config.json` with the app's origin.
 - As the MCP README says for the same feature, this is **not a security boundary**: redirects are not covered. Throwaway test accounts remain the real safeguard.
 - The CLI writes snapshots and console logs to `.playwright-cli/` in the working directory. The consumer `.gitignore` must exclude that folder.
+
+**Commands the skills use, verified on 2026-11-08** with 0.1.23 against `https://demo.playwright.dev/todomvc/`, with the origin-limit config above, on pwsh 7.6.9 and Windows PowerShell 5.1:
+
+| Command | Result |
+|---|---|
+| `npx --yes @playwright/cli@0.1.23 --version` | `0.1.23`. This is also the availability check |
+| `… open <url> --browser chrome` | Opened the installed Chrome. Prints the page URL, title, and a link to the snapshot file |
+| `… snapshot` | An accessibility tree in YAML. Each element has its role, its accessible name and a ref such as `[ref=e8]` |
+| `… fill e8 "buy milk"` | Filled the textbox. Printed the JavaScript it ran: `page.getByRole('textbox', { name: 'What needs to be done?' }).fill(…)` |
+| `… press Enter` | Pressed the key and printed a new snapshot link |
+| `… check e21`, `… click e30` | Checked the checkbox, followed the link. Each printed the `getByRole(…)` it used |
+| `… generate-locator e8` | `getByRole('textbox', { name: 'What needs to be done?' })`. That is JavaScript syntax; in C# it becomes `GetByRole(AriaRole.Textbox, new() { Name = "What needs to be done?" })` |
+| `… find "items left"` | The matching snapshot nodes with their context, or `No matches found` |
+| `… requests` | The network requests since the page loaded (static files hidden unless `--static`) |
+| `… console` | The console messages with counts of errors and warnings |
+| `… goto https://example.com/` | `net::ERR_BLOCKED_BY_CLIENT` (the origin limit) |
+| `… close` | `Browser 'default' closed` |
+
+- Refs of elements still on the page were unchanged after an in-page update (`e8` stayed `e8`), and new elements got new refs. Skills still take each ref from the latest snapshot.
+- Outputs are short: 50 to 1,700 characters per command on this page. A snapshot of a large page is longer. `find` returns only the matching part.
+- **PowerShell detail:** calling `npx` through a PowerShell function that forwards `$args` lost the arguments (the CLI printed its help). Calling `npx --yes @playwright/cli@0.1.23 <command>` directly works on both editions.
+- **Not verified:** `select`, `upload`, `dialog-accept`, the `request <n>` detail commands, and pages that make API calls. The demo page has none.
 
 ## Documentation servers
 
@@ -173,7 +195,7 @@ Neither documentation server is required, and every skill must work without them
 
 Used by these skills and agents:
 - `ci-pipeline`: `gh workflow run` and `gh run watch`, but only when the user asks.
-- `maintain-test` and `failure-investigator`: `gh run view` and `gh run download`.
+- `maintain-test`: `gh run list --json …`, `gh run view <id> --json jobs` and `gh run download <id> -n <artifact> -D TestResults/ci/<id>`, to read the TRX from CI. Never `--log-failed` into the conversation. When a log is really needed, `suite-runner` extracts only the failing step.
 - `pr-review-loop`: `gh pr view`, `gh pr checks` and `gh api` for review comments.
 - `ci-summary`: reads the downloaded results artifacts.
 - `bug-report`: `gh issue create --title <t> --body-file <file>` (flags checked in `gh issue create --help`, 2.103.3), only when the user asks.

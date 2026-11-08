@@ -35,14 +35,15 @@ internal static class HookModes
             return Deny(input, decision.Rule, decision.Reason);
         }
 
-        var fingerprint = TestRuns.Fingerprint(command);
-        if (fingerprint is not null)
+        var fingerprints = TestRuns.Fingerprints(command, String(input.Payload, "cwd"), ctx.ProjectRoot);
+        if (fingerprints.Count > 0)
         {
             var ledger = ctx.State.ReadLedger(ctx.SessionId);
-            if (ledger.LastFailFingerprint == fingerprint && !ledger.EditsSinceFail)
+            if (!ledger.EditsSinceFail && FailedRuns(ledger).Overlaps(fingerprints))
             {
                 return Deny(input, "test-rerun-unchanged",
-                    "this exact dotnet test command already failed and nothing has been edited since. " +
+                    "this dotnet test command already failed and nothing has been edited since " +
+                    "(a new --results-directory, --report-trx, --no-build or --no-restore doesn't make it a different run). " +
                     "Fix the code or data, or classify the failure (script defect, product defect or environment) " +
                     "instead of rerunning it unchanged. To rerun on purpose, for example for a suspected flaky test, " +
                     "change the command, such as adding a filter for that one test");
@@ -59,25 +60,30 @@ internal static class HookModes
 
     public static HookDecision PostShell(HookInput input)
     {
-        var fingerprint = TestRuns.Fingerprint(String(input.Payload, "tool_input", "command") ?? string.Empty);
-        if (fingerprint is null)
+        var ctx = input.Context;
+        var fingerprints = TestRuns.Fingerprints(String(input.Payload, "tool_input", "command") ?? string.Empty, String(input.Payload, "cwd"), ctx.ProjectRoot);
+        if (fingerprints.Count == 0)
         {
             return HookDecision.Allow;
         }
 
-        var ctx = input.Context;
         var ledger = ctx.State.ReadLedger(ctx.SessionId);
         if (TestRuns.LooksFailed(ResponseText(input.Payload)))
         {
-            ctx.State.WriteLedger(ctx.SessionId, new RerunLedger(fingerprint, EditsSinceFail: false));
+            // Which run of a chain failed isn't known, so every run in it counts as failed.
+            ctx.State.WriteLedger(ctx.SessionId, new RerunLedger(string.Join(',', fingerprints.Distinct()), EditsSinceFail: false));
         }
-        else if (ledger.LastFailFingerprint == fingerprint)
+        else if (FailedRuns(ledger).Overlaps(fingerprints))
         {
             ctx.State.WriteLedger(ctx.SessionId, new RerunLedger(null, false));
         }
 
         return HookDecision.Allow;
     }
+
+    /// <summary>The fingerprints of the last failed command; a chain stores them comma-separated.</summary>
+    private static HashSet<string> FailedRuns(RerunLedger ledger) =>
+        [.. (ledger.LastFailFingerprint ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries)];
 
     public static HookDecision PostEdit(HookInput input)
     {

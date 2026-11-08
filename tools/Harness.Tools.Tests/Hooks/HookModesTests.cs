@@ -131,6 +131,71 @@ public sealed class HookModesTests : IDisposable
     }
 
     [Fact]
+    public void Rerun_WithOnlyANewResultsFolder_IsStillBlocked()
+    {
+        _host.AfterShell(TestCommand + " --report-trx --results-directory TestResults/run-1", FailedOutput);
+
+        var r = _host.Shell(TestCommand + " --no-build --report-trx --results-directory TestResults/run-2");
+
+        Assert.Equal(2, r.Code);
+    }
+
+    [Fact]
+    public void Rerun_ChainedAfterAnotherTestCommand_IsStillBlocked()
+    {
+        _host.AfterShell(TestCommand, FailedOutput);
+
+        var r = _host.Shell("dotnet test --project tests/Other/Other.csproj; " + TestCommand);
+
+        Assert.Equal(2, r.Code);
+    }
+
+    [Fact]
+    public void Rerun_OfAnyRunFromAFailedChain_IsBlocked()
+    {
+        _host.AfterShell("dotnet test --project tests/Other/Other.csproj; " + TestCommand, FailedOutput);
+
+        Assert.Equal(2, _host.Shell(TestCommand).Code);
+        Assert.Equal(2, _host.Shell("dotnet test --project tests/Other/Other.csproj").Code);
+    }
+
+    [Fact]
+    public void PlannedDoubleRun_InOneCommand_IsAllowed()
+    {
+        var both = TestCommand + " --results-directory TestResults/verify-1; " + TestCommand + " --results-directory TestResults/verify-2";
+
+        Assert.Equal(0, _host.Shell(both).Code);
+    }
+
+    [Fact]
+    public void FailedRun_InAScratchCopyOutsideTheProject_DoesNotBlockTheSameRunInTheProject()
+    {
+        using var scratch = new TempDir();
+
+        _host.AfterShell(TestCommand, FailedOutput, cwd: scratch.Path);
+
+        Assert.Equal(0, _host.Shell(TestCommand, cwd: _host.Root.Path).Code);
+    }
+
+    [Fact]
+    public void FailedRun_InTheProject_StillBlocksTheSameRunInTheProject()
+    {
+        _host.AfterShell(TestCommand, FailedOutput, cwd: _host.Root.Path);
+
+        Assert.Equal(2, _host.Shell(TestCommand, cwd: _host.Root.Path).Code);
+    }
+
+    [Fact]
+    public void RunsInAScratchCopyOutsideTheProject_AreNeverBlocked()
+    {
+        using var scratch = new TempDir();
+
+        _host.AfterShell(TestCommand, FailedOutput, cwd: scratch.Path);
+
+        Assert.Equal(0, _host.Shell(TestCommand, cwd: scratch.Path).Code);
+    }
+
+    [Fact]
     public void Rerun_AfterThatCommandPasses_IsAllowed()
     {
         _host.AfterShell(TestCommand, FailedOutput);

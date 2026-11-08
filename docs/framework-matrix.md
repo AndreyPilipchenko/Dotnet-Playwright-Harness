@@ -68,6 +68,23 @@ Notes:
 | Summary | Multi-line block: `Test run summary: Failed!` / `total: 2` / `failed: 1` / `succeeded: 1` / `skipped: 0` | One line: `Failed!  - Failed: 1, Passed: 1, Skipped: 0, Total: 2` |
 | Failure detail | `failed with 1 error(s)` per module, then the Playwright message (`Locator expected to have text …`) with the aria snapshot | `Failed <Test> [2 s]` + `Error Message:` |
 
+## Scoped runs (verified 2026-11-08)
+
+Spiked on projects scaffolded from the templates, with a test class holding three tests: one with the categories `smoke` and `tc:TC-001`, one with `smoke` only, and one skipped (`[Ignore]` for NUnit and MSTest, `[Fact(Skip = …)]` for xUnit). Each run used `--no-build --report-trx --results-directory artifacts/test-results/<label>`.
+
+| Purpose | NUnit / MSTest | xUnit v3 |
+|---|---|---|
+| One linked test case | `--filter "TestCategory=tc:TC-001"`: the colon needs no escaping; 1 test ran | `--filter-trait "Category=tc:TC-001"`: 1 test ran |
+| One test by method name | `--filter "Name=UnlinkedPasses"`: 1 test ran | `--filter-method "Acme.Spike.Tests.Ui.SpikeTests.UnlinkedPasses"` (full name): 1 test ran |
+| Tests by part of the full name | `--filter "FullyQualifiedName~SpikeTests.LinkedPasses"`: 1 test ran | `--filter-method "*LinkedPasses"` is a wildcard: it ran **2** tests, `LinkedPasses` and `UnlinkedPasses`. Use the full name |
+
+What the runs showed:
+
+- **No matching test:** exit code **8**, `Zero tests ran` on the module line and as the summary (`Test run summary: Zero tests ran`, `error: 1`, `total: 0`). Same on all three. `hook post-shell` does not count it as a failure. A skill must not count it as a pass either.
+- **Skipped tests:** the run still ends `Test run summary: Passed!` with exit code **0**, and only the `skipped: 1` line shows the skip. A skipped test is visible only in that line.
+- **Separate results folders:** two runs of the same project with different `--results-directory` values each wrote their own `<project>_<tfm>_<arch>.trx`. The pre-shell rerun block ignores `--results-directory`, `--report-trx`, `--no-build` and `--no-restore` when it compares commands, but counts `BROWSER` and `HEADED` (`TestRuns.Fingerprints`). A new folder doesn't make a failed run new. Two planned runs therefore go in one command joined with `;`. Only runs inside the project root count: the hook reads the payload's `cwd` and follows `cd`, `Set-Location` and `Push-Location` segments, so a run in a scratch copy outside the project (break it once) is neither recorded nor blocked. This is covered by unit tests; it has not been observed live, because the `cwd` payload field comes from the Claude Code hook documentation.
+- `total` counts every test that ran, including the scaffold's own `GreetingTests` when the filter selects it.
+
 ## Test attributes and lifecycle (verified 2026-11-08)
 
 Spiked on projects scaffolded from the templates, with warnings as errors, Chromium, native MTP. Each spike had a two-row data-driven test, an async per-test setup and teardown that creates and disposes an `IAPIRequestContext` from the adapter's `Playwright` property, and a class marked to run without parallelism. All four tests passed on each framework, and the category filter selected exactly the two data rows.
@@ -177,3 +194,11 @@ Other facts found on the way:
 - In `--allowedTools` and permission rules, **file allow rules must be written as `Edit(path)`**. `Write(path)` is not matched by file permission checks, and Claude Code says so.
 - A nested `claude -p` session starts in the user's default permission mode (here, plan mode), so live tests pass `--permission-mode default` with scoped `--allowedTools`. `bypassPermissions` is not needed.
 - PostToolUse exit 2 shows stderr to Claude and does not undo the tool call. This matches the docs.
+
+## Probe test and scratch copy (verified 2026-11-08)
+
+Used by automate-test when playwright-cli isn't available. On an NUnit project scaffolded from the templates, with `BASE_URL=https://demo.playwright.dev`:
+
+- `Harness.Tools scratch-copy --to <new folder>` copied the 127 tracked and untracked files. It did not copy `bin/`, `obj/` or `.harness/state/`. The copy built with 0 warnings.
+- `scratch-copy` refuses (exit 64, nothing copied) a target that is the project root, inside it, inside the git repository that contains it (also when `--root` is a subfolder), or already exists.
+- A probe test in the copy ran `Page.GotoAsync("/todomvc/")`, `await Page.Locator("body").AriaSnapshotAsync()` and `GetByRole(…).CountAsync()`, and wrote them to a file with `File.WriteAllTextAsync`. The run passed, and the file held the accessibility tree in the same YAML form as a playwright-cli snapshot, without refs.
