@@ -1,0 +1,8 @@
+{
+  "network": {
+    "allowedOrigins": [ "https://app.test.example" ]
+  },
+  "browser": {
+    "isolated": true
+  }
+}
