@@ -196,7 +196,11 @@ Neither documentation server is required, and every skill must work without them
 Used by these skills and agents:
 - `ci-pipeline`: `gh workflow run` and `gh run watch`, but only when the user asks.
 - `maintain-test`: `gh run list --json …`, `gh run view <id> --json jobs` and `gh run download <id> -n <artifact> -D TestResults/ci/<id>`, to read the TRX from CI. Never `--log-failed` into the conversation. When a log is really needed, `suite-runner` extracts only the failing step.
-- `pr-review-loop`: `gh pr view`, `gh pr checks` and `gh api` for review comments.
+- `pr-review-loop`, tested read-only on 2026-11-08 (gh 2.103.3):
+  - `gh pr view <n> --json number,title,state,reviewDecision,headRefName` works.
+  - `gh pr checks <n>` exits 1 and prints "no checks reported" when a PR has none. That isn't a failed check.
+  - `gh api graphql -F owner=… -F name=… -F number=… -F query=@<file>` lists `reviewThreads` with `id`, `isResolved`, `isOutdated`, `path`, `line` and the comments. Tried on a public PR, on Windows PowerShell with a query file, which avoids the quoting problem above. The REST list of review comments has no resolved state, so the skill uses this.
+  - Replies go through `gh pr comment <n> --body-file <file>` (flag checked in `--help`; not run, because it posts to a live PR). Threaded replies and resolving a thread are writes that weren't tested, so the skill leaves resolving to the user.
 - `ci-summary`: reads the downloaded results artifacts.
 - `bug-report`: `gh issue create --title <t> --body-file <file>` (flags checked in `gh issue create --help`, 2.103.3), only when the user asks.
 - `requirements-analysis`: `gh issue view <n>` to read a story, and `gh issue comment` only when the user asks.

@@ -11,7 +11,7 @@ real ones get fixed. You change nothing.
 
 ## Your brief gives you
 
-- The findings, one per line: `F<n> | blocking: yes/no | <file:line> | <claim> | <evidence>`.
+- The findings, one per line: `F<n> | blocking: yes/no | <file:line> | <claim> | <evidence>`. A line may end with `rule:` and `class:` fields.
 - The changed files, and the test cases or requirements the work is meant to meet.
 - The rules: `.claude/skills/pom-architecture/references/design-conventions.md` and the specialist skills.
 

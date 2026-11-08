@@ -22,7 +22,7 @@ the review, the break result, the runs and the repair count.
 2. [Refine](references/playbook.md#2-refine): make the steps executable without changing what they prove.
 3. [Observe](references/playbook.md#3-observe): see the real page with playwright-cli ([observe](references/observe.md)), or a probe test without it.
 4. [Author](references/playbook.md#4-author): the `test-author` agent writes the code. Its gate is a clean build, `check-conventions` and `traceability`.
-5. [Review](references/playbook.md#5-review): a fresh subagent tries to refute the work ([review brief](references/review-brief.md)), and `findings-verifier` checks the findings you'd act on (none, no verifier).
+5. [Review](references/playbook.md#5-review): framework-review. Fresh agents try to refute the work and list every relaxed check, and `findings-verifier` checks the findings you'd act on (none, no verifier).
 6. [Break it once](references/playbook.md#6-break-it-once): in a scratch copy, make one expected result false and watch the test go red.
 7. [Verify](references/playbook.md#7-verify): two scoped runs through `suite-runner`, both green (run-tests).
 8. [Repair](references/playbook.md#8-repair): at most three rounds per batch. Every change sends the case back through review, break and verify.
@@ -37,7 +37,7 @@ and act on their reports. The general rules are in pom-architecture, under "Agen
 |---|---|---|
 | 1–3 Source, refine, observe | you | none |
 | 4 Author, and every repair | the author | `test-author` |
-| 5 Review | a fresh reviewer, briefed with [the review brief](references/review-brief.md) | `general-purpose` |
+| 5 Review, through framework-review | a fresh reviewer, and the relaxed-check list | `framework-reviewer`, `loosened-reviewer` |
 | 5 Check the findings you'd act on | the verifier | `findings-verifier` |
 | 6 Break it once: you make the edit in the scratch copy; the agent runs it | the runner | `suite-runner` |
 | 7 Verify: both runs in one command | the runner | `suite-runner` |

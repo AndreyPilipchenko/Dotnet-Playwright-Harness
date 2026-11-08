@@ -5,7 +5,8 @@ description: Use when running, scoping or reading the result of tests in a Playw
 
 # Running tests
 
-Every run goes through the `suite-runner` agent. It runs the command, reads the output and returns
+Every run goes through the `suite-runner` agent, except the one reproduction run that
+`failure-investigator` makes itself. It runs the command, reads the output and returns
 only the counts and the first error line per failing test, so the logs stay out of this
 conversation. The commands below are from `docs/framework-matrix.md` (verified on all three
 frameworks). Check `.harness/project.json` for the framework first.

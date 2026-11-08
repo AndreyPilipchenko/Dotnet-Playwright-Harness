@@ -71,7 +71,7 @@ failures. Record each one in the assessment's experiment table:
 ## 5. Fix and re-verify (diagnose and fix only)
 
 - Fix only a diagnosed test or framework defect, at its cause: the locator in the page class, the wait in the `Verify*` method, the data in the JSON, the cleanup in the Api class.
-- Then follow automate-test stages 5–7, in full: a fresh review with `findings-verifier`, break it once in a scratch copy, and the two scoped runs in one command (automate-test stage 7). Count the round in the case's automation notes, if there is one.
+- Then follow automate-test stages 5–7, in full: framework-review, break it once in a scratch copy, and the two scoped runs in one command (automate-test stage 7). Count the round in the case's automation notes, if there is one.
 - **Three attempts:** when three fixes in a row haven't turned it green, stop. Dispatch `failure-investigator` again with all three attempts and their results. The next fix must test a new hypothesis.
 - A product defect goes to bug-report. An accepted requirement change goes to requirements-analysis and test-case-design.
 
