@@ -1,6 +1,7 @@
 using Harness.Tools.Conventions;
 using Harness.Tools.Hooks;
 using Harness.Tools.Installing;
+using Harness.Tools.Reports;
 using Harness.Tools.Scaffolding;
 using Harness.Tools.Scratch;
 using Harness.Tools.Traceability;
@@ -32,16 +33,17 @@ internal static class Cli
         {{ConventionCommand.Usage.TrimEnd()}}
         {{TraceabilityCommand.Usage.TrimEnd()}}
         {{ScratchCopyCommand.Usage.TrimEnd()}}
-          ci-summary           Planned
+        {{CiSummaryCommand.Usage.TrimEnd()}}
+        {{SecretScanCommand.Usage.TrimEnd()}}
+        {{PackageReportCommand.Usage.TrimEnd()}}
           dashboard            Planned
-          secret-scan          Planned
           tracker              Planned
           validate-skills      Planned
         """;
 
     private static readonly string[] PlannedCommands =
     [
-        "ci-summary", "dashboard", "secret-scan", "tracker", "validate-skills",
+        "dashboard", "tracker", "validate-skills",
     ];
 
     public static int Run(IReadOnlyList<string> args, TextReader stdin, TextWriter stdout, TextWriter stderr)
@@ -68,6 +70,12 @@ internal static class Cli
                 return TraceabilityCommand.Run(rest, stdout, stderr);
             case "scratch-copy":
                 return ScratchCopyCommand.Run(rest, stdout, stderr);
+            case "ci-summary":
+                return CiSummaryCommand.Run(rest, stdout, stderr, Environment.GetEnvironmentVariable);
+            case "secret-scan":
+                return SecretScanCommand.Run(rest, stdout, stderr, Environment.GetEnvironmentVariable);
+            case "package-report":
+                return PackageReportCommand.Run(rest, stdout, stderr);
             case "scaffold":
                 return RunScaffold(rest, stdout, stderr);
             case "install":
