@@ -234,7 +234,8 @@ Latest releases, read with `gh` from each repository. The templates pin the majo
 
 - `playwright.ps1 install --with-deps` is listed in the CLI's help (`install --help`). It installs system packages, so CI uses it and local runs don't.
 - Every shell command in the rendered workflows passed on Windows for all three frameworks, in a project made with `setup.ps1`, `scaffold` and `scaffold-ci`.
-- **Not verified:** a real GitHub Actions run, Linux runners, `actionlint`, an empty `BASE_URL` on Linux, Firefox and WebKit. All 16 YAML files parse.
+- This repository's own workflow passed on GitHub Actions (run 42502518073): tool build, tests and `validate-skills` on `ubuntu-latest` and `windows-latest`, `Test-Setup` on both PowerShell editions, and each framework's skeleton scaffolded, built and run on `ubuntu-latest`. So Linux and `install --with-deps chromium` are verified for the skeleton.
+- **Not verified:** the workflows that `scaffold-ci` generates on GitHub Actions (including an empty `BASE_URL` on Linux and the baseline cache), `actionlint`, Firefox and WebKit. All 16 YAML files parse.
 
 ## Probe test and scratch copy (verified 2026-11-08)
 

@@ -170,7 +170,7 @@ Both servers were driven over streamable HTTP by a small PowerShell client, with
 | Context7 | **Adopt as optional, off by default.** Best for the Playwright .NET API. Sends queries to a third-party hosted service, and works without a key at a lower rate limit. The Claude plugin in this environment asked for authentication, so the documented setup is the plain HTTP server entry |
 | NuGet MCP (`NuGet.Mcp.Server` 1.4.23, Microsoft, verified owner) | **Reject.** It starts through `dotnet dnx NuGet.Mcp.Server@1.4.23 --yes` and offers 6 tools, but their schemas are **35,406 characters**, loaded in every session. On a spike project, `upgrade_packages_to_latest` returned `"NuGetSolver could not find a compatible set of package versions … for an unknown reason"` |
 
-Neither documentation server is required, and every skill must work without them. The skill that uses them says which server to try for which question, and that their answers are checked against `framework-matrix.md` before use.
+Neither documentation server is required, and every skill works without them. No skill names them. `docs/mcp.md` says when each is useful, and that their answers are checked against `framework-matrix.md` before use.
 
 **Open item for `csharp-standards` (Phase 3):** on the same spike project, `dotnet list package --outdated` and `dotnet package list --outdated --format json` also failed. Every package was reported as "Not found at the sources", although all are current on nuget.org and no `nuget.config` was involved. `--vulnerable` worked. The cause must be found before a skill relies on the outdated check.
 
