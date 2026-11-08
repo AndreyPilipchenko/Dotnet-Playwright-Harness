@@ -169,6 +169,7 @@ Attributes differ per framework: `[Test]`/`[Category]`, `[Fact]`/`[Trait("Catego
    - Fixed synthetic values, including deliberately invalid passwords, belong in the JSON.
 6. **Actions act; validations verify.**
    - Every assertion lives in a `Verify*` method on a business class, using web-first `Assertions.Expect`. `[no-assertion-in-test]` `[action-verify-separation]`
+   - A value with no web-first form, such as a database count, is compared with `Checks.Equal(expected, actual, what)` from Utils. It throws `CheckFailedException`, which every test framework reports as a failure. The framework project never references a test framework's `Assert`.
    - Actions never assert, and `Verify*` methods never click or fill.
    - Each test has at least one `Verify*` call.
 7. **No fixed waits.** `Thread.Sleep`, `Task.Delay` and `WaitForTimeoutAsync` are banned outside Utils. `[no-hard-wait]`

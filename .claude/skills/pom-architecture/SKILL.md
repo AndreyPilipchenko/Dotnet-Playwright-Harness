@@ -32,6 +32,16 @@ and raise the mismatch.
 
 | Working on | Skill |
 |---|---|
+| Choosing, naming or repairing a locator; strict-mode errors; upload inputs | element-locators |
+| Creating or extending a page class; shared areas such as a header; NavigateAsync; composition | page-classes |
+| A business step on a page, Api, Db or Helpers class; dialogs; uploads | action-methods |
+| A `Verify*` method: Expect matchers, absence, lists, API status, DB values, timeouts | validation-methods |
+| The paired JSON file, its records, keyed cases, enums, secrets, unique values, upload files | test-data |
+| A `<Feature>Tests` class: layout, setup and teardown of services, categories | test-classes |
+| A single test: what its body may contain, data rows, independence | test-methods |
+| An `<Domain>Api` or `<Domain>Db` class: requests, queries, seeding, cleanup | service-classes |
+| Whether code belongs in Utils or Config; secrets, retries, checks, connections, timeouts | utility-classes |
+| An extension method or C# 14 extension block | extension-classes |
 | Starting a framework from nothing, or adapting the skeleton to an application | scaffold-framework |
 | Test attributes, categories, data rows, hooks, parallelism or `dotnet test` commands for NUnit, xUnit or MSTest | test-framework |
 | Build settings, analyzers, nullable, async rules, packages and versions | csharp-standards |
