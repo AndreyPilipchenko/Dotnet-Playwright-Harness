@@ -41,9 +41,7 @@ public class CliTests
     }
 
     [Theory]
-    [InlineData("ci-summary")]
     [InlineData("dashboard")]
-    [InlineData("secret-scan")]
     [InlineData("tracker")]
     [InlineData("validate-skills")]
     public void PlannedCommand_IsRouted_ButReportsNotImplemented(string command)

@@ -68,6 +68,16 @@ Notes:
 | Summary | Multi-line block: `Test run summary: Failed!` / `total: 2` / `failed: 1` / `succeeded: 1` / `skipped: 0` | One line: `Failed!  - Failed: 1, Passed: 1, Skipped: 0, Total: 2` |
 | Failure detail | `failed with 1 error(s)` per module, then the Playwright message (`Locator expected to have text …`) with the aria snapshot | `Failed <Test> [2 s]` + `Error Message:` |
 
+**TRX shape** (2026-11-08, spiked on projects scaffolded for each framework, each with a passing, a failing and a skipped test; `ci-summary` was run on the results):
+
+- `UnitTestResult` has `testId`, `testName`, `duration` and `outcome`. A failure holds `Output/ErrorInfo/Message` and `StackTrace`. `testId` joins to `TestDefinitions/UnitTest/@id`, which holds `TestCategory/TestCategoryItem/@TestCategory` and `TestMethod/@className`.
+- A skip is `outcome="NotExecuted"` on all three, and `ResultSummary/Counters` counts it under `notExecuted`. NUnit and MSTest put the reason in `Message`. xUnit v3 leaves it out.
+- `testName` is the short method name on NUnit and MSTest, and the full name on xUnit v3. The class comes from `className`.
+- `TestCategoryItem` holds `bug:<id>` and `tc:<id>` on all three, xUnit `Trait("Category", …)` included.
+- A Playwright failure's `Message` continues with `Call log:` and `Data:` blocks after the first line.
+- The escape character can't be stored in XML, so a message holds it as the six characters `\u001b` (seen on NUnit; the TRX writer is the platform's, not the framework's).
+- `ResultSummary/@outcome` is `Failed` for a failed run, and a `RunInfo` with `outcome="Error"` carries the exit-code text.
+
 ## Scoped runs (verified 2026-11-08)
 
 Spiked on projects scaffolded from the templates, with a test class holding three tests: one with the categories `smoke` and `tc:TC-001`, one with `smoke` only, and one skipped (`[Ignore]` for NUnit and MSTest, `[Fact(Skip = …)]` for xUnit). Each run used `--no-build --report-trx --results-directory artifacts/test-results/<label>`.
@@ -169,7 +179,9 @@ Many online examples, Context7's included, show the VSTest form `dotnet test -- 
   - The "Not found at the sources" message seen during Phase 0 did not reproduce.
   - **JSON shape** (`--outdated --format json`): `projects[].frameworks[].topLevelPackages[]` with `id`, `requestedVersion`, `resolvedVersion`, `latestVersion`. A project with no findings has a `path` and no `frameworks` key.
   - **The build is the vulnerability gate.** With `TreatWarningsAsErrors`, restore-time NuGet audit fails the build on a vulnerable direct package. Pinning `System.Text.Json` 8.0.4 gave `error NU1903: Warning As Error: … known high severity vulnerability`. `package list --vulnerable` then fails too (exit 1), because restore fails.
-  - Not verified: NuGet audit for transitive-only vulnerabilities, and the JSON shape of a `--vulnerable` finding.
+  - **JSON shape of a `--vulnerable` finding** (2026-11-08, SDK 10.0.403, `System.Text.Json` 8.0.4 without warnings as errors): the same envelope as `--outdated`, with `id`, `requestedVersion`, `resolvedVersion` and `vulnerabilities[]` of `severity` and `advisoryurl`. The command exits 0 with the finding.
+  - **A listing that could not run** (no restore assets, `--no-restore`): exit 1, and the JSON still has a `path` with no `frameworks`, which alone looks clean. The cause is in a top-level `problems[]` with `project`, `level` and `text`, so `package-report` treats a `problems` entry of level `error` as "not checked".
+  - Not verified: NuGet audit for transitive-only vulnerabilities, and the shape of `transitivePackages` entries in a real finding (`package-report` assumes the same fields as `topLevelPackages`, without `requestedVersion`).
   - Also seen: `NU1510` (a reference to a package the SDK already provides, here `System.Text.Json`) is an error under warnings as errors.
 - **xunit.v3** does not add a global `using Xunit;`. The template must add it, either in code or with `<Using Include="Xunit" />`.
 
