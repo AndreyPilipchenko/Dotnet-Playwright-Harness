@@ -64,7 +64,7 @@ use a repair round.
 
 ## 5. Review
 
-1. Dispatch a **fresh** subagent (`subagent_type: general-purpose`), never the author, with [the review brief](review-brief.md), the TC, the notes and the changed files. Fill in the brief's bracketed parts, and add any facts about the app it can't see in code, such as "the filter links are also list items".
+1. Run [framework-review](../../framework-review/SKILL.md): dispatch `framework-reviewer` and `loosened-reviewer`, never the author. Give the reviewer the TC, the notes, the changed files and the author's gate results, and add any facts about the app it can't see in code, such as "the filter links are also list items". A blocking relaxed check counts as a blocking finding.
 2. Give `findings-verifier` (`subagent_type: findings-verifier`) the findings you would act on: every blocking one, and the non-blocking ones you plan to fix. Include the same files. It answers CONFIRMED, REFUTED or UNCERTAIN per finding, with evidence. Non-blocking findings you won't fix go straight into the report.
 3. **CONFIRMED and blocking:** repair (stage 8). **UNCERTAIN and blocking:** read the code yourself and decide; note why. **REFUTED:** record and drop. **Not blocking:** fix it if it's cheap; otherwise list it in the report.
 4. A blocking finding stays open until it's fixed, or until the **user** accepts it in writing. Note who accepted it. An agent never accepts on the user's behalf.

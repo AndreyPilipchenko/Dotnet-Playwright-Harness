@@ -12,7 +12,7 @@ The [MIT license](LICENSE) covers this repository. Parts of it are adapted from 
 
 - Source: [`anudeeps28/claude-code-harness`](https://github.com/anudeeps28/claude-code-harness) 3.2.0, commit `4ba77a3`.
 - License: MIT, copyright (c) 2026 Anudeep Sharma.
-- Used for: the generalist process skills and agents (suite runner, coverage audit, loosened-test review, PR review loop, harness improvement) and the safety-check test cases that specify `hook pre-shell` and `hook pre-write`. Hooks are rewritten in C#.
+- Used for: the generalist process skills and agents (suite runner, debug agent, evaluation, coverage audit, loosened-test review, PR review loop, harness improvement) and the safety-check test cases that specify `hook pre-shell` and `hook pre-write`. Hooks are rewritten in C#.
 
 ## sample-playwright-framework
 
