@@ -36,14 +36,14 @@ internal static class Cli
         {{CiSummaryCommand.Usage.TrimEnd()}}
         {{SecretScanCommand.Usage.TrimEnd()}}
         {{PackageReportCommand.Usage.TrimEnd()}}
-          dashboard            Planned
-          tracker              Planned
+        {{DashboardCommand.Usage.TrimEnd()}}
+        {{TrackerCommand.Usage.TrimEnd()}}
           validate-skills      Planned
         """;
 
     private static readonly string[] PlannedCommands =
     [
-        "dashboard", "tracker", "validate-skills",
+        "validate-skills",
     ];
 
     public static int Run(IReadOnlyList<string> args, TextReader stdin, TextWriter stdout, TextWriter stderr)
@@ -76,6 +76,10 @@ internal static class Cli
                 return SecretScanCommand.Run(rest, stdout, stderr, Environment.GetEnvironmentVariable);
             case "package-report":
                 return PackageReportCommand.Run(rest, stdout, stderr);
+            case "dashboard":
+                return DashboardCommand.Run(rest, stdout, stderr, Environment.GetEnvironmentVariable);
+            case "tracker":
+                return TrackerCommand.Run(rest, stdout, stderr);
             case "scaffold":
                 return RunScaffold(rest, stdout, stderr);
             case "install":
