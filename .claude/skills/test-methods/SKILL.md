@@ -13,9 +13,48 @@ Read [design-conventions](../pom-architecture/references/design-conventions.md) 
 
 ## 1. One test, one behaviour
 
+Use the samples for the framework in `.harness/project.json`. Only the attributes differ; the body
+is the same in all three.
+
+**NUnit**
+
 ```csharp
 [Test]
 [Category("smoke")]
+public async Task RemovesADeletedOrderAsync()
+{
+    var id = await _orders.CreateOrderAsync(Data.Orders["standard"].Product, 1);
+    var checkout = new CheckoutActions(Page);
+    var ordersPage = new OrdersPage(Page);
+
+    await checkout.SignInAndOpenOrdersAsync(Data.User.Email, Secrets.Get("SHOP_PASSWORD"));
+    await ordersPage.DeleteOrderAsync(id);
+    await ordersPage.VerifyOrderAbsentAsync(id);
+}
+```
+
+**xUnit v3**
+
+```csharp
+[Fact]
+[Trait("Category", "smoke")]
+public async Task RemovesADeletedOrderAsync()
+{
+    var id = await _orders.CreateOrderAsync(Data.Orders["standard"].Product, 1);
+    var checkout = new CheckoutActions(Page);
+    var ordersPage = new OrdersPage(Page);
+
+    await checkout.SignInAndOpenOrdersAsync(Data.User.Email, Secrets.Get("SHOP_PASSWORD"));
+    await ordersPage.DeleteOrderAsync(id);
+    await ordersPage.VerifyOrderAbsentAsync(id);
+}
+```
+
+**MSTest v4** (the class around it carries `[TestClass]`, see test-classes)
+
+```csharp
+[TestMethod]
+[TestCategory("smoke")]
 public async Task RemovesADeletedOrderAsync()
 {
     var id = await _orders.CreateOrderAsync(Data.Orders["standard"].Product, 1);
@@ -58,6 +97,8 @@ when the product ignores the action.
 
 ## 4. Variants are data rows
 
+**NUnit**
+
 ```csharp
 [TestCase("standard")]
 [TestCase("express")]
@@ -74,7 +115,45 @@ public async Task ShowsNewOrderWithItsStatusAsync(string shipping)
 }
 ```
 
-- Same steps, different data: one method with a row per case. The row holds the case key; the values stay in the JSON. xUnit uses `[Theory]` with `[InlineData]`, and MSTest uses `[DataRow]` (test-framework).
+**xUnit v3**
+
+```csharp
+[Theory]
+[InlineData("standard")]
+[InlineData("express")]
+[Trait("Category", "regression")]
+public async Task ShowsNewOrderWithItsStatusAsync(string shipping)
+{
+    var order = Data.Orders[shipping];
+    var id = await _orders.CreateOrderAsync(order.Product, order.Quantity);
+    var checkout = new CheckoutActions(Page);
+    var ordersPage = new OrdersPage(Page);
+
+    await checkout.SignInAndOpenOrdersAsync(Data.User.Email, Secrets.Get("SHOP_PASSWORD"));
+    await ordersPage.VerifyOrderStatusAsync(id, order.Status);
+}
+```
+
+**MSTest v4**
+
+```csharp
+[TestMethod]
+[DataRow("standard")]
+[DataRow("express")]
+[TestCategory("regression")]
+public async Task ShowsNewOrderWithItsStatusAsync(string shipping)
+{
+    var order = Data.Orders[shipping];
+    var id = await _orders.CreateOrderAsync(order.Product, order.Quantity);
+    var checkout = new CheckoutActions(Page);
+    var ordersPage = new OrdersPage(Page);
+
+    await checkout.SignInAndOpenOrdersAsync(Data.User.Email, Secrets.Get("SHOP_PASSWORD"));
+    await ordersPage.VerifyOrderStatusAsync(id, order.Status);
+}
+```
+
+- Same steps, different data: one method with a row per case. The row holds the case key; the values stay in the JSON (test-framework has the attributes).
 - Different steps: separate tests, kept next to each other in the class.
 
 ## 5. Independent and parallel-safe

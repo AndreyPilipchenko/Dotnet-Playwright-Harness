@@ -57,7 +57,7 @@ resources/testData/            <Feature>TestData.json, one per test class
 | Test class and file | `<Feature>Tests` in `<Feature>Tests.cs` `[test-class-naming]` | `LoginTests.cs` |
 | Test method | What the system does, ending in `Async` | `ShowsErrorForWrongPasswordAsync` |
 | Test data | `resources/testData/<Feature>TestData.json` (camelCase folder, never `test-data`) `[test-data-pairing]` `[test-data-folder]` | `LoginTestData.json` |
-| Category | `smoke`, `regression`, or the project's list in `.harness/project.json`; plus the links `tc:<id>` (the test case it automates) and `bug:<id>` (a known defect) `[category-vocabulary]` | `[Category("smoke")]`, `[Category("tc:TC-012")]` |
+| Category | `smoke`, `regression`, or the project's list in `.harness/project.json`; plus the links `tc:<id>` (the test case it automates) and `bug:<id>` (a known defect) `[category-vocabulary]` | NUnit `[Category("tc:TC-012")]`, xUnit `[Trait("Category", "tc:TC-012")]`, MSTest `[TestCategory("tc:TC-012")]` |
 
 **Locator suffixes (closed list):** `Button`, `Input`, `Link`, `Header`, `Heading`, `Text`,
 `Image`, `Icon`, `Checkbox`, `Radio`, `Dropdown`, `List`, `Table`, `Row`, `Cell`, `Form`,
@@ -123,7 +123,10 @@ public sealed class LoginPage
 }
 ```
 
-The test that uses it, with its data:
+The test that uses it, with its data. Only the attributes differ between frameworks; use the one
+in `.harness/project.json`.
+
+**NUnit**
 
 ```csharp
 public class LoginTests : UiTest
@@ -147,12 +150,54 @@ public sealed record LoginTestData(LoginCase WrongPassword);
 public sealed record LoginCase(string Email, string Password, string Error);
 ```
 
+**xUnit v3**
+
+```csharp
+public class LoginTests : UiTest
+{
+    private static readonly LoginTestData Data = TestData.Load<LoginTestData>("Login");
+
+    [Fact]
+    [Trait("Category", "regression")]
+    public async Task ShowsErrorForWrongPasswordAsync()
+    {
+        var loginPage = new LoginPage(Page);
+
+        await loginPage.NavigateAsync();
+        await loginPage.LoginAsync(Data.WrongPassword.Email, Data.WrongPassword.Password);
+        await loginPage.VerifyErrorMessageAsync(Data.WrongPassword.Error);
+    }
+}
+```
+
+**MSTest v4**
+
+```csharp
+[TestClass]
+public class LoginTests : UiTest
+{
+    private static readonly LoginTestData Data = TestData.Load<LoginTestData>("Login");
+
+    [TestMethod]
+    [TestCategory("regression")]
+    public async Task ShowsErrorForWrongPasswordAsync()
+    {
+        var loginPage = new LoginPage(Page);
+
+        await loginPage.NavigateAsync();
+        await loginPage.LoginAsync(Data.WrongPassword.Email, Data.WrongPassword.Password);
+        await loginPage.VerifyErrorMessageAsync(Data.WrongPassword.Error);
+    }
+}
+```
+
+The data records are the same in all three, and so is the JSON:
+
 ```json
 { "wrongPassword": { "email": "qa@example.com", "password": "not-the-password", "error": "Invalid email or password" } }
 ```
 
-Attributes differ per framework: `[Test]`/`[Category]`, `[Fact]`/`[Trait("Category", …)]`,
-`[TestMethod]`/`[TestCategory]`. The test-framework skill has the full mapping.
+The test-framework skill has the full attribute mapping.
 
 ## 4. Iron laws
 
@@ -256,14 +301,53 @@ public sealed class OrdersApi : IAsyncDisposable
 }
 ```
 
+The hooks in the test class, `tests/<Name>.Tests/Ui/OrdersTests.cs`:
+
+**NUnit**
+
 ```csharp
-// tests/<Name>.Tests/Ui/OrdersTests.cs (NUnit shown; the test-framework skill maps the hooks)
 private OrdersApi _orders = null!;
 
 [SetUp]
 public async Task CreateOrdersApiAsync() => _orders = await OrdersApi.CreateAsync(Playwright);
 
 [TearDown]
+public async Task CleanUpAsync()
+{
+    await _orders.DeleteCreatedOrdersAsync();
+    await _orders.DisposeAsync();
+}
+```
+
+**xUnit v3**: override the base hooks. Call `base.InitializeAsync()` first and `base.DisposeAsync()` last; `GC.SuppressFinalize(this)` satisfies CA1816.
+
+```csharp
+private OrdersApi _orders = null!;
+
+public override async ValueTask InitializeAsync()
+{
+    await base.InitializeAsync();
+    _orders = await OrdersApi.CreateAsync(Playwright);
+}
+
+public override async ValueTask DisposeAsync()
+{
+    await _orders.DeleteCreatedOrdersAsync();
+    await _orders.DisposeAsync();
+    await base.DisposeAsync();
+    GC.SuppressFinalize(this);
+}
+```
+
+**MSTest v4**
+
+```csharp
+private OrdersApi _orders = null!;
+
+[TestInitialize]
+public async Task CreateOrdersApiAsync() => _orders = await OrdersApi.CreateAsync(Playwright);
+
+[TestCleanup]
 public async Task CleanUpAsync()
 {
     await _orders.DeleteCreatedOrdersAsync();
@@ -279,7 +363,7 @@ public async Task CleanUpAsync()
 A test that fails because the product is wrong is **working**. Keep it, keep it red:
 
 1. Write the test against the documented behaviour, exactly as if the product were fixed.
-2. Add the category `bug:<id>`, for example `[Category("bug:BUG-17")]`, next to its normal category.
+2. Add the category `bug:<id>` next to its normal category: `[Category("bug:BUG-17")]` (NUnit), `[Trait("Category", "bug:BUG-17")]` (xUnit) or `[TestCategory("bug:BUG-17")]` (MSTest).
 3. The bug report is `docs/qa/bug-reports/BUG-<n>.md` (the bug-report skill), and `Harness.Tools traceability` checks that the category names it. Optionally link an external issue in the test's XML doc comment.
 4. CI reports `bug:` failures separately as known failures, so new failures still stand out. When the fix ships, the test turns green on its own.
 

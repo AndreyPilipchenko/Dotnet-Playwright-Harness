@@ -14,3 +14,5 @@ allure-results/
 # Local harness state
 .harness/state/
 .playwright-cli/
+
+.fake

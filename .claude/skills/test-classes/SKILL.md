@@ -21,7 +21,10 @@ hook attributes for each framework.
 
 ## 2. Layout
 
-The canonical order (NUnit shown, from a verified example):
+The canonical order, shown for each framework (all three are from verified examples). Use the one
+in `.harness/project.json`.
+
+**NUnit**
 
 ```csharp
 public class OrdersTests : UiTest
@@ -51,16 +54,84 @@ public class OrdersTests : UiTest
 }
 ```
 
+**xUnit v3**: the hooks are overrides of the base class's `InitializeAsync` and `DisposeAsync`.
+
+```csharp
+public class OrdersTests : UiTest
+{
+    private static readonly OrdersTestData Data = TestData.Load<OrdersTestData>("Orders");
+
+    private OrdersApi _orders = null!;
+
+    [Theory]
+    [InlineData("standard")]
+    [InlineData("express")]
+    [Trait("Category", "regression")]
+    public async Task ShowsNewOrderWithItsStatusAsync(string shipping) { /* see test-methods */ }
+
+    [Fact]
+    [Trait("Category", "smoke")]
+    public async Task RemovesADeletedOrderAsync() { /* see test-methods */ }
+
+    public override async ValueTask InitializeAsync()
+    {
+        await base.InitializeAsync();
+        _orders = await OrdersApi.CreateAsync(Playwright);
+    }
+
+    public override async ValueTask DisposeAsync()
+    {
+        await _orders.DeleteCreatedOrdersAsync();
+        await _orders.DisposeAsync();
+        await base.DisposeAsync();
+        GC.SuppressFinalize(this);
+    }
+}
+```
+
+**MSTest v4**: `[TestClass]` on the class.
+
+```csharp
+[TestClass]
+public class OrdersTests : UiTest
+{
+    private static readonly OrdersTestData Data = TestData.Load<OrdersTestData>("Orders");
+
+    private OrdersApi _orders = null!;
+
+    [TestMethod]
+    [DataRow("standard")]
+    [DataRow("express")]
+    [TestCategory("regression")]
+    public async Task ShowsNewOrderWithItsStatusAsync(string shipping) { /* see test-methods */ }
+
+    [TestMethod]
+    [TestCategory("smoke")]
+    public async Task RemovesADeletedOrderAsync() { /* see test-methods */ }
+
+    [TestInitialize]
+    public async Task CreateOrdersApiAsync() => _orders = await OrdersApi.CreateAsync(Playwright);
+
+    [TestCleanup]
+    public async Task CleanUpAsync()
+    {
+        await _orders.DeleteCreatedOrdersAsync();
+        await _orders.DisposeAsync();
+    }
+}
+```
+
 1. The `Data` field: `static readonly`, loaded from the paired file.
 2. Per-test service fields, in layer order (Apis, then Dbs, then Helpers): `private OrdersApi _orders = null!;`.
 3. The tests.
-4. The hooks, at the bottom: setup, then teardown.
+4. The hooks, at the bottom: setup, then teardown. In xUnit these are the `InitializeAsync` and `DisposeAsync` overrides.
 
 ## 3. Hooks
 
 - **Per-test setup** creates the Api and Db objects the tests use, from the adapter's `Playwright` property. Page objects are created inside each test from `Page`, because each test gets a fresh page.
 - **Per-test teardown** first deletes what the test created, through the same Api or Db class, then disposes it. Teardown runs after a failure too, so it needs no `try`.
 - Hook forms per framework (`[SetUp]`, `InitializeAsync`, `[TestInitialize]`) are in the test-framework skill.
+- **xUnit order:** `InitializeAsync` calls `base.InitializeAsync()` first, before it uses `Playwright`. `DisposeAsync` cleans up first, calls `base.DisposeAsync()` last, then `GC.SuppressFinalize(this)`, which analyzer rule CA1816 requires (docs/framework-matrix.md).
 - Class-level setup (`[OneTimeSetUp]`, `IClassFixture<T>`, `[ClassInitialize]`) is not verified yet. Use per-test setup until it has been spiked and recorded in the framework matrix.
 
 ## 4. Categories
