@@ -68,6 +68,27 @@ Notes:
 | Summary | Multi-line block: `Test run summary: Failed!` / `total: 2` / `failed: 1` / `succeeded: 1` / `skipped: 0` | One line: `Failed!  - Failed: 1, Passed: 1, Skipped: 0, Total: 2` |
 | Failure detail | `failed with 1 error(s)` per module, then the Playwright message (`Locator expected to have text …`) with the aria snapshot | `Failed <Test> [2 s]` + `Error Message:` |
 
+## Test attributes and lifecycle (verified 2026-11-08)
+
+Spiked on projects scaffolded from the templates, with warnings as errors, Chromium, native MTP. Each spike had a two-row data-driven test, an async per-test setup and teardown that creates and disposes an `IAPIRequestContext` from the adapter's `Playwright` property, and a class marked to run without parallelism. All four tests passed on each framework, and the category filter selected exactly the two data rows.
+
+| | NUnit | xUnit v3 | MSTest v4 |
+|---|---|---|---|
+| Test class | plain class deriving from `UiTest` | same | `[TestClass]` needed on every test class |
+| Test | `[Test]` | `[Fact]` | `[TestMethod]` |
+| Data rows | `[TestCase(a, b)]` on the method, no `[Test]` needed | `[Theory]` + `[InlineData(a, b)]` | `[TestMethod]` + `[DataRow(a, b)]` |
+| Category | `[Category("x")]` | `[Trait("Category", "x")]` | `[TestCategory("x")]` |
+| Per-test async setup / teardown | `[SetUp]` / `[TearDown]` on `public async Task` methods | `public override async ValueTask InitializeAsync()` calling `base.InitializeAsync()` first; `DisposeAsync()` override calling `base.DisposeAsync()` last | `[TestInitialize]` / `[TestCleanup]` on `public async Task` methods |
+| Run a class alone | `[NonParallelizable]` | `[Collection("Serial")]` + a `[CollectionDefinition("Serial", DisableParallelization = true)]` class | `[DoNotParallelize]` |
+| Template default parallelism | `[assembly: Parallelizable(ParallelScope.Fixtures)]` | xUnit default (by class) | `[assembly: Parallelize(Scope = ExecutionScope.MethodLevel)]` |
+
+Analyzer errors seen under the strict build (xUnit only):
+
+- `CA1816` on a `DisposeAsync()` override: add `GC.SuppressFinalize(this);`.
+- `CA1711` on a collection definition class named `…Collection`: name it differently, for example `SerialGroup`.
+
+Not verified: that the "run alone" markers really serialize execution (only compile and pass were checked), class-level setup hooks (`[OneTimeSetUp]`, `IClassFixture`, `[ClassInitialize]`), and source-method data (`TestCaseSource`, `MemberData`, `DynamicData`).
+
 ## Allure output location
 
 | | Location | Template action |
@@ -97,6 +118,14 @@ Many online examples, Context7's included, show the VSTest form `dotnet test -- 
 ## Other verified facts
 
 - **Browser install** works through `bin/<cfg>/<tfm>/playwright.ps1 install chromium` on **Windows PowerShell 5.1** as well as on pwsh 7. The script's `pwsh` shebang does not matter when it is called as `powershell.exe -File`. The C# fallback planned for this case is not needed.
+- **Package checks under CPM** (2026-11-08, SDK 10.0.403, on a scaffolded NUnit project, from the repo root): `dotnet package list --outdated` and `dotnet package list --vulnerable --include-transitive` both work. The older `dotnet list package …` form gives the same output. `--format json` gives machine-readable output.
+  - When nothing is found, they print "has no updates given the current sources" or "has no vulnerable packages…" and exit 0. They also exit 0 when an update is found, so read the output; the exit code says nothing.
+  - Pinning `NUnit.Analyzers` back to 4.10.0 was reported as `Requested 4.10.0, Latest 4.15.0`.
+  - The "Not found at the sources" message seen during Phase 0 did not reproduce.
+  - **JSON shape** (`--outdated --format json`): `projects[].frameworks[].topLevelPackages[]` with `id`, `requestedVersion`, `resolvedVersion`, `latestVersion`. A project with no findings has a `path` and no `frameworks` key.
+  - **The build is the vulnerability gate.** With `TreatWarningsAsErrors`, restore-time NuGet audit fails the build on a vulnerable direct package. Pinning `System.Text.Json` 8.0.4 gave `error NU1903: Warning As Error: … known high severity vulnerability`. `package list --vulnerable` then fails too (exit 1), because restore fails.
+  - Not verified: NuGet audit for transitive-only vulnerabilities, and the JSON shape of a `--vulnerable` finding.
+  - Also seen: `NU1510` (a reference to a package the SDK already provides, here `System.Text.Json`) is an error under warnings as errors.
 - **xunit.v3** does not add a global `using Xunit;`. The template must add it, either in code or with `<Using Include="Xunit" />`.
 
 ## Claude Code hooks (verified live, Claude Code 2.1.319, Windows 11, 2026-11-08)

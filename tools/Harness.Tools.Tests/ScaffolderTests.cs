@@ -195,6 +195,34 @@ public class ScaffolderTests
     }
 
     [Fact]
+    public void DotPrefix_IsAppliedToFolders()
+    {
+        using var templates = FakeTemplates();
+        templates.Write("nunit/dot.agents/notes.md", "x");
+        using var output = new TempDir();
+
+        Scaffolder.Run(Options("nunit", output.Path, templates.Path));
+
+        Assert.True(File.Exists(output.Combine(".agents/notes.md")));
+    }
+
+    [Theory]
+    [InlineData("nunit", "--filter \"TestCategory=smoke\"")]
+    [InlineData("xunit", "--filter-trait \"Category=smoke\"")]
+    [InlineData("mstest", "--filter \"TestCategory=smoke\"")]
+    public void RealTemplates_WriteTheDotnetTestOverlay_WithTheFrameworksFilter(string framework, string filter)
+    {
+        using var dir = new TempDir();
+
+        Scaffolder.Run(Options(framework, dir.Path));
+
+        var overlay = File.ReadAllText(dir.Combine(".agents/skill-overlays/dotnet-test/run-tests.md"));
+        Assert.Contains("core: dotnet-test/run-tests", overlay, StringComparison.Ordinal);
+        Assert.Contains("--project tests/Acme.Shop.Tests/Acme.Shop.Tests.csproj", overlay, StringComparison.Ordinal);
+        Assert.Contains(filter, overlay, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void MissingTemplateLayer_IsReported()
     {
         using var templates = new TempDir();

@@ -42,6 +42,9 @@ internal static class RepoPaths
     public static string Templates =>
         TemplateLocator.Find(AppContext.BaseDirectory)
         ?? throw new InvalidOperationException("templates/ folder not found above " + AppContext.BaseDirectory);
+
+    /// <summary>The repository root: the folder that holds templates/.</summary>
+    public static string Root => Path.GetDirectoryName(Templates)!;
 }
 
 /// <summary>Captures what a CLI or hook call writes.</summary>

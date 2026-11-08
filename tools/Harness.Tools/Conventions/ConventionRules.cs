@@ -103,7 +103,7 @@ internal static partial class ConventionRules
             "Console output is lost in parallel runs. Use the test framework's output or a logger in Utils.",
             [Layer.Tests, Layer.Setup, Layer.Pages, Layer.Apis, Layer.Dbs], NoConsoleOutput),
         new("no-persistent-dialog-handler", Severity.Fail,
-            "A lambda added to Page.Dialog is never removed and handles every later dialog. Use RunAndWaitForDialogAsync or remove the handler.",
+            "A lambda added to Page.Dialog is never removed and handles every later dialog. Add a named handler, run the action, then remove it with -=.",
             PagesOnly, NoPersistentDialogHandler),
         new("locator-in-method-body", Severity.Warn,
             "Declare each locator once as a private ILocator property (or a method returning ILocator) and use it from actions.",

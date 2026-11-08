@@ -16,8 +16,8 @@ internal sealed class ScaffoldException(string message) : Exception(message);
 /// <summary>
 /// Renders the walking skeleton from three template layers: <c>build</c> (repo root files),
 /// <c>framework</c> (the framework-neutral project) and the chosen test framework.
-/// Path segments may contain <c>__Name__</c>; a file name starting with <c>dot.</c> becomes a
-/// dotfile. File contents may contain <c>{{Name}}</c>, <c>{{TargetFramework}}</c> and
+/// Path segments may contain <c>__Name__</c>; a file or folder name starting with <c>dot.</c>
+/// gets a leading dot instead. File contents may contain <c>{{Name}}</c>, <c>{{TargetFramework}}</c> and
 /// <c>{{Framework}}</c>. Everything is rendered in memory and checked before the first write,
 /// and existing files are never overwritten.
 /// </summary>
@@ -133,12 +133,7 @@ internal static partial class Scaffolder
     {
         var segments = relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
             .Select(s => s.Replace("__Name__", name, StringComparison.Ordinal))
-            .ToArray();
-        var last = segments[^1];
-        if (last.StartsWith("dot.", StringComparison.Ordinal))
-        {
-            segments[^1] = "." + last["dot.".Length..];
-        }
+            .Select(s => s.StartsWith("dot.", StringComparison.Ordinal) ? "." + s["dot.".Length..] : s);
 
         return string.Join('/', segments);
     }
