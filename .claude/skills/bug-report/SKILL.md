@@ -1,6 +1,6 @@
 ---
 name: bug-report
-description: Use when a test fails because the product is wrong, when asked to report, file, log or write up a bug or defect, when a known defect is fixed or won't be fixed, or when linking a failing test to its bug with a bug:<id> category - BUG records under docs/qa/bug-reports/ and an optional GitHub issue.
+description: Use when a test fails because the product is wrong, when asked to report, file, log or write up a bug or defect, when a known defect is fixed or won't be fixed, or when linking a failing test to its bug with a bug category - BUG records under docs/qa/bug-reports/ and an optional GitHub issue.
 ---
 
 # Bug report

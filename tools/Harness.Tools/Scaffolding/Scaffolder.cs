@@ -63,10 +63,31 @@ internal static partial class Scaffolder
             ["Framework"] = framework,
         };
 
-        var plan = Render(options.TemplatesDirectory, ["build", "framework", framework], tokens);
+        return Write(Render(options.TemplatesDirectory, ["build", "framework", framework], tokens), options.OutputDirectory);
+    }
 
+    /// <summary>Renders the GitHub Actions templates. Separate from the skeleton: a workflow runs as soon as it is pushed.</summary>
+    public static IReadOnlyList<string> RunCi(ScaffoldOptions options)
+    {
+        var framework = Validate(options.Framework, options.Name, options.TargetFramework);
+        var xunit = framework == "xunit";
+
+        var tokens = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["Name"] = options.Name,
+            ["TargetFramework"] = options.TargetFramework,
+            ["Framework"] = framework,
+            ["FilterOption"] = xunit ? "--filter-trait" : "--filter",
+            ["SmokeFilter"] = xunit ? "Category=smoke" : "TestCategory=smoke",
+        };
+
+        return Write(Render(options.TemplatesDirectory, ["ci"], tokens), options.OutputDirectory);
+    }
+
+    private static IReadOnlyList<string> Write(SortedDictionary<string, string> plan, string outputDirectory)
+    {
         var conflicts = plan.Keys
-            .Where(rel => Path.Exists(Path.Combine(options.OutputDirectory, rel)))
+            .Where(rel => Path.Exists(Path.Combine(outputDirectory, rel)))
             .ToList();
         if (conflicts.Count > 0)
         {
@@ -76,7 +97,7 @@ internal static partial class Scaffolder
 
         foreach (var (rel, content) in plan)
         {
-            var target = Path.Combine(options.OutputDirectory, rel);
+            var target = Path.Combine(outputDirectory, rel);
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             File.WriteAllText(target, content, Utf8NoBom);
         }

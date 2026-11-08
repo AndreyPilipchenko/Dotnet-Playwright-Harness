@@ -1,6 +1,6 @@
 ---
 name: test-data
-description: Use when adding, shaping, loading or reviewing test data in a Playwright C# framework built with this harness - the paired <Feature>TestData.json file, its C# records, data for data-driven cases, enums, unique per-run values, credentials and secrets, uploaded files, or removing hard-coded inputs and expected values from tests.
+description: Use when adding, shaping, loading or reviewing test data in a Playwright C# framework built with this harness - the paired FeatureTestData.json file, its C# records, data for data-driven cases, enums, unique per-run values, credentials and secrets, uploaded files, or removing hard-coded inputs and expected values from tests.
 ---
 
 # Test data

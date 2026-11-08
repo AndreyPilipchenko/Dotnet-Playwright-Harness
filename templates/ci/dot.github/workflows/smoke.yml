@@ -1,0 +1,35 @@
+# The smoke tests on every push to the main branch, and by hand.
+# Set the repository variable BASE_URL to the application under test.
+
+name: Smoke tests
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BASE_URL: ${{ vars.BASE_URL }}
+      BROWSER: chromium
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-harness
+
+      - uses: ./.github/actions/run-tests
+        with:
+          label: smoke
+          heading: Smoke tests
+          filter-option: {{FilterOption}}
+          filter-value: {{SmokeFilter}}

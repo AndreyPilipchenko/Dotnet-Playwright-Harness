@@ -48,6 +48,12 @@ bug-report for a bug to close.
 When the user names a release or plan, read `docs/qa/test-plans/<name>.md` and report only its
 requirements, and its exit criteria as met or not met.
 
+## 4. As a page
+
+For something to share, `dotnet .harness/tools/bin/Harness.Tools.dll tracker` writes the same status
+as HTML under `TestResults/tracker/`. Add `--results TestResults/<label>` for each case's last result.
+See reporting.
+
 ## Boundaries
 
 - This skill reads; it changes no records. Fixing a finding goes to the skill named in the gap list.

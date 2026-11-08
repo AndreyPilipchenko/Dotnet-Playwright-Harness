@@ -207,6 +207,35 @@ Other facts found on the way:
 - A nested `claude -p` session starts in the user's default permission mode (here, plan mode), so live tests pass `--permission-mode default` with scoped `--allowedTools`. `bypassPermissions` is not needed.
 - PostToolUse exit 2 shows stderr to Claude and does not undo the tool call. This matches the docs.
 
+## Traces of failed tests (verified 2026-11-08, Windows, Chromium)
+
+`UiTest` starts tracing when `TRACE_DIR` is set, and saves the zip only when the test failed. A project scaffolded from each template, with one passing and one failing test, left a zip for the failing test only.
+
+| | Hooks | Outcome read from |
+|---|---|---|
+| NUnit | `[SetUp]`, `[TearDown]` | `TestContext.CurrentContext.Result.Outcome.Status == TestStatus.Failed` |
+| xUnit v3 | override `InitializeAsync`, `DisposeAsync` | `TestContext.Current.TestState?.Result == TestResult.Failed`. It is set by the time `DisposeAsync` runs. Needs `using Xunit;` |
+| MSTest | `[TestInitialize]`, `[TestCleanup]` | `TestContext.CurrentTestOutcome == UnitTestOutcome.Failed` |
+
+- `playwright.ps1 show-trace <file>` is listed in the CLI's help. The viewer itself was not opened.
+- A fake `ghp_` token placed in page content was found by `secret-scan` inside the trace zip (`<test>.zip!trace.trace: github-token`, exit 1).
+
+## GitHub Actions (checked 2026-11-08)
+
+Latest releases, read with `gh` from each repository. The templates pin the major version.
+
+| Action | Latest | Pinned |
+|---|---|---|
+| `actions/checkout` | 7.0.1 | `@v7` |
+| `actions/setup-dotnet` | 6.1.0 | `@v6` |
+| `actions/upload-artifact` | 7.0.2 | `@v7` |
+| `actions/download-artifact` | 8.0.2 | `@v8` |
+| `actions/cache` (`restore`, `save`) | 6.1.0 | `@v6` |
+
+- `playwright.ps1 install --with-deps` is listed in the CLI's help (`install --help`). It installs system packages, so CI uses it and local runs don't.
+- Every shell command in the rendered workflows passed on Windows for all three frameworks, in a project made with `setup.ps1`, `scaffold` and `scaffold-ci`.
+- **Not verified:** a real GitHub Actions run, Linux runners, `actionlint`, an empty `BASE_URL` on Linux, Firefox and WebKit. All 16 YAML files parse.
+
 ## Probe test and scratch copy (verified 2026-11-08)
 
 Used by automate-test when playwright-cli isn't available. On an NUnit project scaffolded from the templates, with `BASE_URL=https://demo.playwright.dev`:

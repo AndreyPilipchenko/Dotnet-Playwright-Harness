@@ -452,7 +452,7 @@ These differences are settled. Do not reintroduce the TypeScript form.
 | `email_input`, `login_button` | `EmailInput`, `SignInButton`, private properties | .NET naming; the suffix vocabulary is kept |
 | `verify*()` returning `Promise<void>` | `Verify*Async()` returning `Task` | async naming; no fluent `return this` |
 | `<Feature>TestJsonFile.json` | `<Feature>TestData.json` | Shorter, matches `TestData.Load` |
-| `test.describe` and fixtures | A test class deriving from `UiTest` | One base class per framework wraps the adapter |
+| Describe blocks and fixtures | A test class deriving from `UiTest` | One base class per framework wraps the adapter |
 | Tags `@smoke` | Categories `smoke`, `regression`, `bug:<id>` | Framework category attributes drive `dotnet test` filters |
 | `playwright.config.ts` | `UiTest.ContextOptions()` plus `BROWSER`, `HEADED` and `BASE_URL` environment variables | runsettings are ignored under Microsoft Testing Platform |
 | An Allure step per method | Intent-named methods; traces and TRX as the baseline. Allure is optional (reporting skill) | Allure packages differ per framework and some are previews |

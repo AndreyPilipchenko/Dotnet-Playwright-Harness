@@ -47,6 +47,7 @@ dotnet package list --outdated --format json   # for a script to read
   - JSON output: a finding is any entry under `projects[].frameworks[].topLevelPackages[]`. A project without findings has no `frameworks` key.
 - A vulnerable direct package already **fails the build**: restore-time NuGet audit reports it as an `NU19xx` warning (`NU1903` for a high-severity one), and warnings are errors. Fix it by updating the package. Never silence the code.
 - The older `dotnet list package --outdated` form gives the same result.
+- For a pass or fail, save the JSON and run `dotnet .harness/tools/bin/Harness.Tools.dll package-report --input <file>`. It exits 1 on findings, and 2 when the listing could not run.
 
 ### Updating one
 - Change the version in `Directory.Packages.props` only.

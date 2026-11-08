@@ -72,6 +72,8 @@ always goes through the `suite-runner` agent.
 | Automating a designed test case: observe, write, review, break it once, two green runs | automate-test |
 | A failing, flaky or CI-only test: diagnose, and fix test or framework defects | maintain-test |
 | Running a test case by hand in the browser, without code, with a run record | execute-test |
+| TRX, summaries, the results page, traces, Allure, checking reports for secrets | reporting |
+| GitHub Actions workflows, CI secrets, reading a CI run from its artifacts | ci-pipeline |
 
 ### Review and loop
 

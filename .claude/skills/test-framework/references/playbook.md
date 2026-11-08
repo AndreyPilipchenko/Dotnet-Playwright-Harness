@@ -141,7 +141,7 @@ The test stays red; never skip it (design-conventions §6). Skip attributes and 
 - Exit code 2 means test failures. 5 means the command line is wrong: an unknown option, `--filter` on xUnit, `--settings` on xUnit, or `--report-trx` without the TRX package.
 - The summary is a block at the end: `Test run summary: Failed!`, then `total:`, `failed:`, `succeeded:`, `skipped:`.
 - Each failing module prints `failed with N error(s)`, followed by the Playwright message (`Locator expected to have text …`) and the aria snapshot of the element.
-- The TRX file goes to the `--results-directory`. Playwright traces, when the base class turns them on, go wherever the base class writes them.
+- The TRX file goes to the `--results-directory`. Playwright traces of failed tests go to the folder named by `TRACE_DIR`, when that variable is set (see reporting).
 - Don't rerun an unchanged failing command. The harness blocks that until a file has been edited. Read the failure first.
 
 ## 7. Porting a test between frameworks

@@ -1,6 +1,6 @@
 ---
 name: test-case-design
-description: Use when designing, writing, reviewing or prioritising test cases for a requirement or feature - TC records under docs/qa/test-cases/, steps and expected results, positive and negative cases, boundaries, coverage of acceptance criteria, choosing what to automate, or linking a test to its case with a tc:<id> category.
+description: Use when designing, writing, reviewing or prioritising test cases for a requirement or feature - TC records under docs/qa/test-cases/, steps and expected results, positive and negative cases, boundaries, coverage of acceptance criteria, choosing what to automate, or linking a test to its case with a tc category.
 ---
 
 # Test case design

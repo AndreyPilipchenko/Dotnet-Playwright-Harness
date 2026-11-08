@@ -1,0 +1,86 @@
+# The whole suite every night (GitHub runs schedules only on the default branch), and by hand.
+# Set the repository variable BASE_URL to the application under test.
+
+name: Nightly tests
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # 02:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      BASE_URL: ${{ vars.BASE_URL }}
+      BROWSER: chromium
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-harness
+
+      - uses: ./.github/actions/run-tests
+        with:
+          label: regression
+          heading: Nightly tests
+
+  # Outdated packages are news, not a broken build, so this step can't fail the run.
+  packages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-harness
+        with:
+          browser: none
+
+      - name: Report outdated packages
+        continue-on-error: true
+        run: |
+          mkdir -p TestResults/packages
+          dotnet package list --outdated --format json > TestResults/packages/outdated.json || true
+          dotnet .harness/tools/bin/Harness.Tools.dll package-report --input TestResults/packages/outdated.json | tee -a "$GITHUB_STEP_SUMMARY"
+
+  # Runs even when tests failed: failures are what the pages show.
+  reports:
+    needs: regression
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-harness
+        with:
+          browser: none
+
+      - name: Download the results
+        uses: actions/download-artifact@v8
+        with:
+          name: results-regression
+          path: artifacts/regression
+
+      # Exit 2 from the tracker means the project has no QA records yet.
+      - name: Build the reports
+        run: |
+          dotnet .harness/tools/bin/Harness.Tools.dll dashboard --run regression=artifacts/regression --out site/index.html
+          dotnet .harness/tools/bin/Harness.Tools.dll tracker --results artifacts/regression --out site/tracker.html || [ $? -eq 2 ]
+
+      - name: Check the reports for secrets
+        run: dotnet .harness/tools/bin/Harness.Tools.dll secret-scan --path site
+
+      - name: Publish the reports
+        uses: actions/upload-artifact@v7
+        with:
+          name: reports
+          path: site
+          retention-days: 14
