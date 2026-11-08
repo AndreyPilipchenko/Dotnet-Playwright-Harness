@@ -41,7 +41,6 @@ public class CliTests
     }
 
     [Theory]
-    [InlineData("traceability")]
     [InlineData("ci-summary")]
     [InlineData("dashboard")]
     [InlineData("secret-scan")]

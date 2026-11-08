@@ -69,6 +69,28 @@ internal sealed partial class SourceFile
     public static bool IsInExtension(SyntaxNode node) =>
         node.AncestorsAndSelf().Any(a => a is ExtensionBlockDeclarationSyntax || (a is MethodDeclarationSyntax m && IsClassicExtension(m)));
 
+    /// <summary>
+    /// Every test category written in the file, in any framework's form: <c>[Category("x")]</c>,
+    /// <c>[TestCategory("x")]</c> and <c>[Trait("Category", "x")]</c>.
+    /// </summary>
+    public IEnumerable<(string Category, AttributeSyntax Attribute)> Categories()
+    {
+        foreach (var attribute in Nodes<AttributeSyntax>())
+        {
+            var category = AttributeName(attribute) switch
+            {
+                "Category" or "TestCategory" => StringArgument(attribute, 0),
+                "Trait" when StringArgument(attribute, 0) == "Category" => StringArgument(attribute, 1),
+                _ => null,
+            };
+
+            if (category is not null)
+            {
+                yield return (category, attribute);
+            }
+        }
+    }
+
     public static bool IsTestMethod(MethodDeclarationSyntax method) =>
         method.AttributeLists.SelectMany(a => a.Attributes).Any(a => TestMethodAttributes.Contains(AttributeName(a)));
 

@@ -101,6 +101,8 @@ public class ConventionRuleTests
 
         { "mixed-test-frameworks", TestPath, "public class LoginTests\n{\n    [Test]\n    public Task AAsync() => Task.CompletedTask;\n\n    [Fact] // <-\n    public Task BAsync() => Task.CompletedTask;\n}" },
 
+        { "category-vocabulary", TestPath, "public class LoginTests\n{\n    [Test, Category(\"tc:TC 12\")] // <-\n    public Task AAsync() => Task.CompletedTask;\n}" },
+
         // extension rules: classic `this` methods and C# 14 extension blocks
         { "extension-placement", PagePath, "static class PageExtensions\n{\n    public static Task OpenHomeAsync(this IPage page) => page.GotoAsync(\"/\"); // <-\n}" },
         { "extension-placement", TestPath, "static class LocatorExtensions\n{\n    extension(ILocator locator) // <-\n    {\n        public Task ReplaceAsync(string v) => locator.FillAsync(v);\n    }\n}" },
@@ -136,6 +138,7 @@ public class ConventionRuleTests
         { "test-data-source", TestPath, "public class LoginTests\n{\n    private static readonly LoginTestData Data = TestData.Load<LoginTestData>(\"Login\");\n}" },
         { "test-class-naming", TestPath, "public class LoginTests\n{\n    [Test]\n    public Task LogsInAsync() => Task.CompletedTask;\n}" },
         { "category-vocabulary", TestPath, "public class LoginTests\n{\n    [Test, Category(\"smoke\")]\n    public Task AAsync() => Task.CompletedTask;\n\n    [Test, Category(\"regression\"), Category(\"bug:BUG-12\")]\n    public Task BAsync() => Task.CompletedTask;\n}" },
+        { "category-vocabulary", TestPath, "public class LoginTests\n{\n    [Test, Category(\"smoke\"), Category(\"tc:TC-012\")]\n    public Task AAsync() => Task.CompletedTask;\n\n    [Fact, Trait(\"Category\", \"tc:TC-013\")]\n    public Task BAsync() => Task.CompletedTask;\n}" },
         { "locator-naming", PagePath, "class LoginPage\n{\n    private ILocator EmailInput => _page.GetByLabel(\"Email\");\n\n    private ILocator ProductRow(string name) => _page.GetByRole(AriaRole.Row);\n}" },
         { "layer-boundary", PagePath, "using Acme.Framework.Utils;\nusing Microsoft.Playwright;\nclass LoginPage { }" },
         { "no-base-page", PagePath, "public sealed class LoginPage : IDisposable\n{\n}" },

@@ -66,6 +66,7 @@ public class OrdersTests : UiTest
 ## 4. Categories
 
 - Every test has at least one category from the project vocabulary: `smoke`, `regression`, or the list in `.harness/project.json`. `[category-vocabulary]`
+- A test that automates a designed test case also gets `tc:<id>`, such as `[Category("tc:TC-012")]`. `Harness.Tools traceability` checks the link (test-case-design).
 - A test of a confirmed product defect also gets `bug:<id>`, and stays red (design-conventions §6).
 - CI picks tests by category, so a test without one is left out of the filtered runs.
 

@@ -176,6 +176,8 @@ Used by these skills and agents:
 - `maintain-test` and `failure-investigator`: `gh run view` and `gh run download`.
 - `pr-review-loop`: `gh pr view`, `gh pr checks` and `gh api` for review comments.
 - `ci-summary`: reads the downloaded results artifacts.
+- `bug-report`: `gh issue create --title <t> --body-file <file>` (flags checked in `gh issue create --help`, 2.103.3), only when the user asks.
+- `requirements-analysis`: `gh issue view <n>` to read a story, and `gh issue comment` only when the user asks.
 
 **Rules carried into the skills:**
 1. **Read results artifacts, not logs.** CI templates publish a small results artifact (TRX plus a summary JSON) on every run. Skills download it to a gitignored folder and run `Harness.Tools ci-summary` on it. Raw logs are a last resort: run them through the `suite-runner` agent, and only extract the failing step.
@@ -184,6 +186,7 @@ Used by these skills and agents:
    - `gh workflow run`
    - `gh run rerun` and `gh run cancel`
    - `gh pr create`, `gh pr merge` and `gh pr comment`
+   - `gh issue create`, `gh issue comment`, `gh issue edit` and `gh issue close`
    - `gh release`
    - `gh api` with `-X POST`, `PUT`, `PATCH` or `DELETE`
    - `gh secret` and `gh variable`
