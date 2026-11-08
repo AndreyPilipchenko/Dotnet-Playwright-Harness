@@ -13,7 +13,7 @@ The test stays red until the fix ships (design-conventions §6).
 Before writing a report, be sure the product is wrong, not the test:
 
 - The expected behaviour is **documented**: a requirement record, an acceptance criterion, or the user confirms it. If it isn't, it's a question for requirements-analysis, not a bug.
-- It reproduces: run the single test again, and once by hand or with a trace if it's intermittent.
+- It reproduces: run the single test again (run-tests), and once by hand (execute-test) if it's intermittent.
 - The test itself is sound: the locator finds the right element, the data is valid, the environment is up. A broken test is fixed, not reported.
 
 ## 2. Write the record
@@ -45,6 +45,6 @@ temporary file, show the user the exact title and body, then run
 
 ## Boundaries
 
-- Deciding whether a failure is the product or the test → read the trace and the assertion first; the failure-investigation work comes in a later phase
+- Deciding whether a failure is the product or the test → maintain-test, which uses the `failure-investigator` agent
 - The test code → test-classes and test-methods
 - Requirement or case changes after a won't-fix → requirements-analysis, test-case-design

@@ -38,11 +38,21 @@ internal sealed class HookTestHost : IDisposable
         return new HookResult(code, io.Out.ToString(), io.Err.ToString());
     }
 
-    public HookResult Shell(string command, string session = "s1", string tool = "Bash") =>
-        Run("pre-shell", new { session_id = session, tool_name = tool, tool_input = new { command } });
+    public HookResult Shell(string command, string session = "s1", string tool = "Bash", string? cwd = null) =>
+        Run("pre-shell", WithCwd(new Dictionary<string, object?> { ["session_id"] = session, ["tool_name"] = tool, ["tool_input"] = new { command } }, cwd));
 
-    public HookResult AfterShell(string command, string output, string session = "s1") =>
-        Run("post-shell", new { session_id = session, tool_name = "Bash", tool_input = new { command }, tool_response = new { stdout = output, stderr = "" } });
+    public HookResult AfterShell(string command, string output, string session = "s1", string? cwd = null) =>
+        Run("post-shell", WithCwd(new Dictionary<string, object?> { ["session_id"] = session, ["tool_name"] = "Bash", ["tool_input"] = new { command }, ["tool_response"] = new { stdout = output, stderr = "" } }, cwd));
+
+    private static Dictionary<string, object?> WithCwd(Dictionary<string, object?> payload, string? cwd)
+    {
+        if (cwd is not null)
+        {
+            payload["cwd"] = cwd;
+        }
+
+        return payload;
+    }
 
     public HookResult AfterEdit(string relativePath, string session = "s1") =>
         Run("post-edit", new { session_id = session, tool_name = "Edit", tool_input = new { file_path = Root.Combine(relativePath) } });

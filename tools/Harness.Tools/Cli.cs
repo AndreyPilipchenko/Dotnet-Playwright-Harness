@@ -2,6 +2,7 @@ using Harness.Tools.Conventions;
 using Harness.Tools.Hooks;
 using Harness.Tools.Installing;
 using Harness.Tools.Scaffolding;
+using Harness.Tools.Scratch;
 using Harness.Tools.Traceability;
 
 namespace Harness.Tools;
@@ -30,6 +31,7 @@ internal static class Cli
                                  --settings-template <file>        (default: templates/settings.harness.json)
         {{ConventionCommand.Usage.TrimEnd()}}
         {{TraceabilityCommand.Usage.TrimEnd()}}
+        {{ScratchCopyCommand.Usage.TrimEnd()}}
           ci-summary           Planned
           dashboard            Planned
           secret-scan          Planned
@@ -64,6 +66,8 @@ internal static class Cli
                 return ConventionCommand.Run(rest, stdout, stderr);
             case "traceability":
                 return TraceabilityCommand.Run(rest, stdout, stderr);
+            case "scratch-copy":
+                return ScratchCopyCommand.Run(rest, stdout, stderr);
             case "scaffold":
                 return RunScaffold(rest, stdout, stderr);
             case "install":

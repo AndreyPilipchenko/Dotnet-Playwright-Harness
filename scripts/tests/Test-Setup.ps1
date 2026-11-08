@@ -44,7 +44,7 @@ try {
     # A copy of the harness, so update.ps1 can be tested against a "newer" harness.
     $harness = Join-Path $work 'harness'
     New-Item -ItemType Directory -Path $harness | Out-Null
-    foreach ($item in @('scripts', 'templates', 'LICENSE', 'NOTICE.md')) {
+    foreach ($item in @('scripts', 'templates', '.claude', 'LICENSE', 'NOTICE.md')) {
         Copy-Item -Recurse -LiteralPath (Join-Path $repo $item) -Destination $harness
     }
     New-Item -ItemType Directory -Path (Join-Path $harness 'tools') | Out-Null
@@ -72,6 +72,7 @@ try {
     Check 'builds the tool' (Test-Path (Join-Path $project '.harness\tools\bin\Harness.Tools.dll'))
     Check 'copies setup and update' ((Test-Path (Join-Path $project '.harness\setup.ps1')) -and (Test-Path (Join-Path $project '.harness\update.ps1')))
     Check 'copies the templates' (Test-Path (Join-Path $project '.harness\templates\settings.harness.json'))
+    Check 'copies the agents' (Test-Path (Join-Path $project '.claude\agents\suite-runner.md'))
     $projectJson = Read-Json (Join-Path $project '.harness\project.json')
     Check 'records the framework' ($projectJson.framework -eq 'nunit' -and $projectJson.name -eq 'Acme.Shop')
     $settings = Join-Path $project '.claude\settings.json'
