@@ -10,7 +10,7 @@ This repo is a Claude Code harness for building Playwright + C#/.NET test framew
 - `.claude/skills/` and `.claude/agents/`: the payload that setup copies into a project. `SkillRoutingTests` and `AgentDefinitionTests` check the frontmatter, and check that every skill is routed from pom-architecture and every agent is named by a skill.
 - `templates/settings.harness.json`: the hook and deny block that `install` merges into a project's `.claude/settings.json`. It is not a scaffold layer.
 - `scripts/`: `setup.ps1` and `update.ps1` copy the payload into a project (tracked by `.harness/manifest.json`, so local changes are never overwritten), build the tool and run `install`. `scripts/tests/Test-Setup.ps1` checks both scripts end to end.
-- `docs/`: `framework-matrix.md` (versions and behaviour verified by spike) and `external-tools.md` (vetting record). Treat both as the source of truth for package versions and commands.
+- `docs/`: `framework-matrix.md` (versions and behaviour verified by spike) and `external-tools.md` (vetting record) are the source of truth for package versions and commands. `routing-guide.md`, `mcp.md` and `porting-notes.md` are for readers; `DocsTests` checks that the guide names every skill and agent.
 
 ## Commands
 
