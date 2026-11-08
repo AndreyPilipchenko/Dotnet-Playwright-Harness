@@ -153,6 +153,12 @@ All passed on a scaffolded NUnit project (Chromium, warnings as errors):
 
 The xUnit preview reports the test name as the fully qualified method name (`SpikeXunit.LoginTests.ShowsGreetingAsync`).
 
+Rechecked on the scaffolded skeleton of each framework on 2026-11-08: adding the package, and `[AllureNUnit]` for NUnit, built with warnings as errors, the sample test passed, and one result file appeared at the location above.
+
+## Setup end to end (verified 2026-11-08, Windows)
+
+For each of NUnit, xUnit and MSTest, on Windows PowerShell 5.1 and pwsh 7: `setup.ps1`, `scaffold`, build with warnings as errors, `playwright.ps1 install chromium`, the sample test, TRX written, `ci-summary` showing 1 passed, and `check-conventions` clean. An added `Thread.Sleep` made `check-conventions` exit 1, and removing it made the check clean again.
+
 ## Browser and launch configuration under MTP
 
 **The `.runsettings` `<Playwright>` section does not work under native MTP.** It was tested with `BrowserName=webkit`, where WebKit was not installed, so a working setting would make the tests fail:
@@ -199,7 +205,23 @@ Checked in a scratch project installed with `setup.ps1` and run through `claude 
 | `post-edit` | Writing a page that calls `Thread.Sleep` gave Claude the `no-hard-wait` finding as feedback ("hook blocking error" on PostToolUse); the file was kept |
 | `session-end` | `sessions.jsonl` got one row per session, with deny and ask counts |
 
-`post-shell` and `pre-compact` were not triggered live; their behaviour is covered by unit tests.
+`pre-compact` was not triggered live; its behaviour is covered by unit tests.
+
+**Second live pass (2026-11-08), `claude -p` on a project made with `setup.ps1`:**
+
+| Check | Result |
+|---|---|
+| A file that only names `git push origin main` | Written and read, not blocked |
+| `git stash push`, `git stash pop` | Allowed |
+| `git push origin main` | Blocked (`push-default-branch`) |
+| A failing `dotnet test`, repeated unchanged | The repeat is blocked (`test-rerun-unchanged`) |
+| The same command after editing a `.cs` file | Allowed |
+| `Remove-Item -Recurse -Force <dir>` | Asks (`delete-files`). With no one to answer under `-p`, it isn't run. A plain single-file `Remove-Item` doesn't ask |
+| `Read` on `.env` | Denied by the permission rule |
+| Tool DLL missing | Work continues. `dotnet` exits 1, not 2, and Claude Code prints a hook error |
+
+- **Claude Code fires `PostToolUseFailure`, not `PostToolUse`, for a shell command that exits non-zero.** The payload has no `tool_response`, and the output is in `error`. `post-shell` needs both events, or a failed test run is never recorded.
+- Hook time over 25 runs on Windows, median: `pre-write` 47 ms, `pre-shell` 62 ms, `post-edit` 139 ms.
 
 Other facts found on the way:
 

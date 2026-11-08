@@ -26,7 +26,19 @@ public class InstallerTests
     // ── the template matches the tool ────────────────────────────────────
 
     [Fact]
-    public void Template_HasOneExecFormHandler_PerHookMode()
+    public void Template_SendsFailedShellCommands_ToPostShell()
+    {
+        // Claude Code fires PostToolUseFailure, not PostToolUse, for a command that exits non-zero.
+        var groups = JsonNode.Parse(File.ReadAllText(Template))!["hooks"]!["PostToolUseFailure"]!.AsArray();
+
+        var group = Assert.Single(groups);
+        Assert.Equal("Bash|PowerShell", group!["matcher"]!.GetValue<string>());
+        var handler = Assert.Single(group["hooks"]!.AsArray());
+        Assert.Equal("post-shell", handler!["args"]![2]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void Template_HasAnExecFormHandler_ForEveryHookMode()
     {
         var handlers = Handlers(JsonNode.Parse(File.ReadAllText(Template))!);
 
@@ -37,7 +49,7 @@ public class InstallerTests
             Assert.Equal("${CLAUDE_PROJECT_DIR}/.harness/tools/bin/Harness.Tools.dll", args[0]);
             Assert.Equal("hook", args[1]);
         });
-        Assert.Equal(HookRunner.Modes.Order(StringComparer.Ordinal), modes.Select(a => a[2]).Order(StringComparer.Ordinal));
+        Assert.Equal(HookRunner.Modes.Order(StringComparer.Ordinal), modes.Select(a => a[2]).Distinct().Order(StringComparer.Ordinal));
     }
 
     // ── project.json ─────────────────────────────────────────────────────
@@ -114,7 +126,7 @@ public class InstallerTests
         Install(root);
 
         var settings = Settings(root);
-        Assert.Equal(7, Handlers(settings).Count(h => IsHarness(h.Handler)));
+        Assert.Equal(8, Handlers(settings).Count(h => IsHarness(h.Handler)));
         Assert.Contains("Read(./.env)", settings["permissions"]!["deny"]!.AsArray().Select(d => d!.GetValue<string>()));
     }
 
@@ -146,7 +158,7 @@ public class InstallerTests
         var handlers = Handlers(settings);
         Assert.Contains(handlers, h => h.Event == "PreToolUse" && h.Handler["command"]!.GetValue<string>() == "my-guard.exe");
         Assert.Contains(handlers, h => h.Event == "Stop");
-        Assert.Equal(7, handlers.Count(h => IsHarness(h.Handler)));
+        Assert.Equal(8, handlers.Count(h => IsHarness(h.Handler)));
     }
 
     [Fact]
@@ -186,7 +198,7 @@ public class InstallerTests
         Assert.DoesNotContain(handlers, h => h.Handler.ToJsonString().Contains("old-mode", StringComparison.Ordinal));
         Assert.Null(settings["hooks"]!["Notification"]);
         Assert.Contains(handlers, h => h.Matcher == "Bash" && h.Handler["command"]!.GetValue<string>() == "my-guard.exe");
-        Assert.Equal(7, handlers.Count(h => IsHarness(h.Handler)));
+        Assert.Equal(8, handlers.Count(h => IsHarness(h.Handler)));
     }
 
     [Fact]
