@@ -35,6 +35,14 @@
         ]
       }
     ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          { "type": "command", "command": "dotnet", "args": ["${CLAUDE_PROJECT_DIR}/.harness/tools/bin/Harness.Tools.dll", "hook", "post-shell"], "timeout": 10 }
+        ]
+      }
+    ],
     "PreCompact": [
       {
         "hooks": [

@@ -101,6 +101,22 @@ public sealed class HookModesTests : IDisposable
     }
 
     [Fact]
+    public void Rerun_OfACommandThatExitedNonZero_IsBlocked()
+    {
+        // Claude Code sends a failing command as PostToolUseFailure: the output is in "error", and there is no tool_response.
+        _host.Run("post-shell", new
+        {
+            session_id = "s1",
+            hook_event_name = "PostToolUseFailure",
+            tool_name = "Bash",
+            tool_input = new { command = TestCommand },
+            error = "Exit code 2\nTest run summary: Failed!\n  total: 1\n  failed: 1\n",
+        });
+
+        Assert.Equal(2, _host.Shell(TestCommand).Code);
+    }
+
+    [Fact]
     public void Rerun_AfterEditingCode_IsAllowed()
     {
         _host.AfterShell(TestCommand, FailedOutput);

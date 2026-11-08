@@ -76,7 +76,7 @@ try {
     $projectJson = Read-Json (Join-Path $project '.harness\project.json')
     Check 'records the framework' ($projectJson.framework -eq 'nunit' -and $projectJson.name -eq 'Acme.Shop')
     $settings = Join-Path $project '.claude\settings.json'
-    Check 'merges 7 harness hooks' ((Get-HarnessHandlerCount $settings) -eq 7)
+    Check 'merges 8 harness hooks' ((Get-HarnessHandlerCount $settings) -eq 8)
     $manifest = [IO.File]::ReadAllText((Join-Path $project '.harness\manifest.json'))
     Check 'writes the manifest, without build output' ($manifest -match 'Harness.Tools.csproj' -and $manifest -notmatch '/(bin|obj)/')
     $firstSettings = [IO.File]::ReadAllText($settings)
@@ -108,14 +108,14 @@ try {
     $globalJson = [IO.File]::ReadAllText((Join-Path $project '.harness\templates\build\global.json')).Replace("`r", '')
     Check 'takes unchanged files from the harness' ($globalJson -eq [IO.File]::ReadAllText((Join-Path $harness 'templates\build\global.json')).Replace("`r", ''))
     Check 'keeps user settings' ((Read-Json $settings).model -eq 'opus')
-    Check 'still 7 harness hooks' ((Get-HarnessHandlerCount $settings) -eq 7)
+    Check 'still 8 harness hooks' ((Get-HarnessHandlerCount $settings) -eq 8)
 
     Write-Host 'A clone rebuilds from the committed source'
     Remove-Item -Recurse -Force (Join-Path $project '.harness\tools\bin')
     $r = Invoke-Script (Join-Path $project '.harness\setup.ps1') @()
     Check "exits 0 $(if ($r.Code -ne 0) { $r.Output })" ($r.Code -eq 0)
     Check 'rebuilds the tool' (Test-Path (Join-Path $project '.harness\tools\bin\Harness.Tools.dll'))
-    Check 'still 7 harness hooks' ((Get-HarnessHandlerCount $settings) -eq 7)
+    Check 'still 8 harness hooks' ((Get-HarnessHandlerCount $settings) -eq 8)
 
     Write-Host 'update.ps1 from a project needs -Source'
     $r = Invoke-Script (Join-Path $project '.harness\update.ps1') @()

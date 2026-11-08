@@ -287,12 +287,16 @@ internal static class HookModes
         }
     }
 
-    /// <summary>The text fields of tool_response (stdout, stderr and so on), or the response itself when it is a string.</summary>
+    /// <summary>
+    /// The command's output: the text fields of tool_response (stdout, stderr and so on), or the
+    /// response itself when it is a string. A command that exits non-zero arrives as
+    /// PostToolUseFailure, which has no tool_response and carries the output in "error".
+    /// </summary>
     private static string ResponseText(JsonElement payload)
     {
         if (!payload.TryGetProperty("tool_response", out var response))
         {
-            return string.Empty;
+            return String(payload, "error") ?? string.Empty;
         }
 
         return response.ValueKind switch
