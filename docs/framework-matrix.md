@@ -89,6 +89,19 @@ Analyzer errors seen under the strict build (xUnit only):
 
 Not verified: that the "run alone" markers really serialize execution (only compile and pass were checked), class-level setup hooks (`[OneTimeSetUp]`, `IClassFixture`, `[ClassInitialize]`), and source-method data (`TestCaseSource`, `MemberData`, `DynamicData`).
 
+## Extension members (verified 2026-11-08)
+
+Spiked on a scaffolded NUnit project (net10.0, `LangVersion=latest`, `AnalysisMode=Recommended`, warnings as errors), in `src/<Name>.Framework/Utils/Extensions/`:
+
+| Form | Build | `check-conventions` | Runtime |
+|---|---|---|---|
+| Classic: `public static class XExtensions` with `this` methods (`EnsureOk`, `ReadIdAsync` on `IAPIResponse`) | 0 warnings | Parsed; Utils rules apply | not run (no server in the spike) |
+| C# 14 block: `extension(ILocator locator) { … }` with a method and a property | 0 warnings | Parsed; Utils rules apply | Called from a page and a probe test: passed |
+
+- The checker (Roslyn `Microsoft.CodeAnalysis.CSharp` 5.9.0, default parse options) sees members inside an `extension` block. A badly named `Task` method was reported as `async-naming` in both forms.
+- `Utils/Extensions/` maps to the Utils layer with no change to `LayerMap`.
+- Not verified: the C# 14 block form when `--target-framework` is not `net10.0`.
+
 ## Allure output location
 
 | | Location | Template action |

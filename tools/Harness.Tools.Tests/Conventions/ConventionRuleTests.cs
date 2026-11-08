@@ -100,6 +100,18 @@ public class ConventionRuleTests
         { "action-verify-separation", PagePath, "class LoginPage\n{\n    public async Task SaveAsync()\n    {\n        await Expect(SaveButton).ToBeEnabledAsync(); // <-\n    }\n}" },
 
         { "mixed-test-frameworks", TestPath, "public class LoginTests\n{\n    [Test]\n    public Task AAsync() => Task.CompletedTask;\n\n    [Fact] // <-\n    public Task BAsync() => Task.CompletedTask;\n}" },
+
+        // extension rules: classic `this` methods and C# 14 extension blocks
+        { "extension-placement", PagePath, "static class PageExtensions\n{\n    public static Task OpenHomeAsync(this IPage page) => page.GotoAsync(\"/\"); // <-\n}" },
+        { "extension-placement", TestPath, "static class LocatorExtensions\n{\n    extension(ILocator locator) // <-\n    {\n        public Task ReplaceAsync(string v) => locator.FillAsync(v);\n    }\n}" },
+        { "extension-placement", UtilPath, "static class Waits\n{\n    public static Task SettleAsync(this IPage page) => page.WaitForLoadStateAsync(); // <-\n}" },
+        { "extension-placement", SetupPath,"static class PageExtensions\n{\n    public static Task ReloadAsync(this IPage page) => page.ReloadAsync(); // <-\n}" },
+        { "extension-naming", ExtensionPath, "static class LocatorHelpers // <-\n{\n    public static Task ReplaceAsync(this ILocator l, string v) => l.FillAsync(v);\n}" },
+        { "extension-naming", UtilPath, "static class LocatorExtensions // <-\n{\n    extension(ILocator locator)\n    {\n        public Task ReplaceAsync(string v) => locator.FillAsync(v);\n    }\n}" },
+        { "no-assertion-in-extension", ExtensionPath, "static class LocatorExtensions\n{\n    public static Task ShouldBeShownAsync(this ILocator l) => Expect(l).ToBeVisibleAsync(); // <-\n}" },
+        { "no-assertion-in-extension", ExtensionPath, "static class LocatorExtensions\n{\n    extension(IAPIResponse response)\n    {\n        public void MustBeOk() => Assert.That(response.Ok); // <-\n    }\n}" },
+        { "no-element-locator-extension", ExtensionPath, "static class LocatorExtensions\n{\n    public static ILocator SaveButton(this IPage page) =>\n        page.GetByRole(AriaRole.Button, new() { Name = \"Save\" }); // <-\n}" },
+        { "no-element-locator-extension", ExtensionPath, "static class LocatorExtensions\n{\n    extension(IPage page)\n    {\n        public async Task LoginAsync(string email)\n        {\n            await page.GetByLabel(\"Email\").FillAsync(email); // <-\n        }\n    }\n}" },
     };
 
     public static TheoryData<string, string, string> Good => new()
@@ -133,6 +145,14 @@ public class ConventionRuleTests
         { "async-naming", SetupPath, "abstract class UiTest : PageTest\n{\n    public override Task Setup() => Task.CompletedTask;\n}" },
         { "action-verify-separation", PagePath, "class LoginPage\n{\n    public Task VerifySavedAsync() => Expect(SavedMessage).ToBeVisibleAsync();\n\n    public Task SaveAsync() => SaveButton.ClickAsync();\n}" },
         { "mixed-test-frameworks", TestPath, "[TestClass]\npublic class LoginTests\n{\n    [TestMethod, TestCategory(\"smoke\")]\n    public Task AAsync() => Task.CompletedTask;\n}" },
+        { "extension-placement", ExtensionPath, "public static class LocatorExtensions\n{\n    public static Task ReplaceTextAsync(this ILocator locator, string value) => locator.FillAsync(value);\n}" },
+        { "extension-placement", ExtensionPath, "public static class LocatorExtensions\n{\n    extension(ILocator locator)\n    {\n        public Task ReplaceTextAsync(string value) => locator.FillAsync(value);\n    }\n}" },
+        { "extension-placement", PagePath, "class LoginPage\n{\n    public Task SaveAsync(string value) => SaveButton.ClickAsync();\n}" },
+        { "extension-naming", ExtensionPath, "public static class LocatorExtensions\n{\n    public static Task ReplaceTextAsync(this ILocator locator, string value) => locator.FillAsync(value);\n}" },
+        { "extension-naming", UtilPath, "static class Waits\n{\n    static Task XAsync() => Task.CompletedTask;\n}" },
+        { "no-assertion-in-extension", ExtensionPath, "public static class LocatorExtensions\n{\n    extension(IAPIResponse response)\n    {\n        public void EnsureOk(string operation)\n        {\n            _ = response.Ok ? 0 : throw new InvalidOperationException($\"{operation} failed with {response.Status}.\");\n        }\n    }\n}" },
+        { "no-element-locator-extension", ExtensionPath, "public static class LocatorExtensions\n{\n    public static ILocator RowWith(this ILocator table, string text) =>\n        table.GetByRole(AriaRole.Row).Filter(new() { HasText = text });\n}" },
+        { "no-element-locator-extension", PagePath, "class LoginPage\n{\n    private ILocator SaveButton => _page.GetByRole(AriaRole.Button, new() { Name = \"Save\" });\n}" },
     };
 
     [Theory]

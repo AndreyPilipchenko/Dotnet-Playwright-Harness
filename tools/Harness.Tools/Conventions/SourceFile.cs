@@ -50,6 +50,25 @@ internal sealed partial class SourceFile
     public IEnumerable<ClassDeclarationSyntax> TestClasses =>
         Nodes<ClassDeclarationSyntax>().Where(c => c.Members.OfType<MethodDeclarationSyntax>().Any(IsTestMethod));
 
+    /// <summary>
+    /// Extension declarations in both forms: classic methods with a <c>this</c> parameter, and
+    /// C# 14 <c>extension(T receiver) { … }</c> blocks.
+    /// </summary>
+    public IEnumerable<SyntaxNode> ExtensionDeclarations =>
+        Root.DescendantNodes().Where(n => n is ExtensionBlockDeclarationSyntax || (n is MethodDeclarationSyntax m && IsClassicExtension(m)));
+
+    /// <summary>Classes that directly declare an extension, in either form.</summary>
+    public IEnumerable<ClassDeclarationSyntax> ExtensionClasses =>
+        Nodes<ClassDeclarationSyntax>().Where(c => c.Members.Any(m =>
+            m is ExtensionBlockDeclarationSyntax || (m is MethodDeclarationSyntax method && IsClassicExtension(method))));
+
+    public static bool IsClassicExtension(MethodDeclarationSyntax method) =>
+        method.ParameterList.Parameters.FirstOrDefault()?.Modifiers.Any(SyntaxKind.ThisKeyword) == true;
+
+    /// <summary>True when the node sits inside an extension method or extension block.</summary>
+    public static bool IsInExtension(SyntaxNode node) =>
+        node.AncestorsAndSelf().Any(a => a is ExtensionBlockDeclarationSyntax || (a is MethodDeclarationSyntax m && IsClassicExtension(m)));
+
     public static bool IsTestMethod(MethodDeclarationSyntax method) =>
         method.AttributeLists.SelectMany(a => a.Attributes).Any(a => TestMethodAttributes.Contains(AttributeName(a)));
 
