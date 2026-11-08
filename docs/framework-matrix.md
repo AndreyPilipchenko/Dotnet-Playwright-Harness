@@ -102,6 +102,21 @@ Spiked on a scaffolded NUnit project (net10.0, `LangVersion=latest`, `AnalysisMo
 - `Utils/Extensions/` maps to the Utils layer with no change to `LayerMap`.
 - Not verified: the C# 14 block form when `--target-framework` is not `net10.0`.
 
+## Playwright and data patterns used by the specialist skills (verified 2026-11-08)
+
+All passed on a scaffolded NUnit project (Chromium, warnings as errors):
+
+| Pattern | Verified behaviour |
+|---|---|
+| Dialog handled for one action | A named handler `static void AcceptDialog(object? sender, IDialog dialog) => _ = dialog.AcceptAsync();` added with `Page.Dialog +=` and removed with `-=` after the click: the `confirm()` returned true. After removal, the next dialog was dismissed automatically (`confirm()` returned false) |
+| Upload | `SetInputFilesAsync(path)` on a hidden `<input type="file">` (`display:none`) set the file. It worked through a CSS selector and also through `GetByLabel("Invoice")` with the input wrapped in its `<label>` |
+| Binary fixtures | `<None Include="..\..\resources\files\**\*" LinkBase="files" CopyToOutputDirectory="PreserveNewest" />` in the test csproj copies them to `files/` next to the binaries; read with `Path.Combine(AppContext.BaseDirectory, "files", …)` |
+| API response assertion | `Expect(response).ToBeOKAsync()` and `Expect(response).Not.ToBeOKAsync()` on an `IAPIResponse` (live GET to playwright.dev, 200 and 404) |
+| Collection assertions | `Expect(rows).ToHaveTextAsync(["A-1", "A-2"])`; `Expect(GetByRole(AriaRole.Checkbox, new() { Checked = false })).ToHaveCountAsync(0)`; `Filter(new() { HasText = … })` plus `ToHaveCountAsync(1)` |
+| Strict mode | Clicking `GetByRole(AriaRole.Button)` on a page with two buttons threw `PlaywrightException: Error: strict mode violation: GetByRole(AriaRole.Button) resolved to 2 elements:` |
+| Keyed cases in test data | A record with `IReadOnlyDictionary<string, OrderCase> Orders`, loaded with the template's `TestData.Load<T>`, gave each case by key (`Data.Orders["express"]`) |
+| Enum in test data | `[JsonConverter(typeof(JsonStringEnumConverter<T>))]` on the enum type: `"Express"` and `"express"` both deserialize with the template's `TestData` options. No change to `TestData.cs` is needed |
+
 ## Allure output location
 
 | | Location | Template action |
