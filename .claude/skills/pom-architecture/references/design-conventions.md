@@ -57,7 +57,7 @@ resources/testData/            <Feature>TestData.json, one per test class
 | Test class and file | `<Feature>Tests` in `<Feature>Tests.cs` `[test-class-naming]` | `LoginTests.cs` |
 | Test method | What the system does, ending in `Async` | `ShowsErrorForWrongPasswordAsync` |
 | Test data | `resources/testData/<Feature>TestData.json` (camelCase folder, never `test-data`) `[test-data-pairing]` `[test-data-folder]` | `LoginTestData.json` |
-| Category | `smoke`, `regression`, `bug:<id>`, or the project's list in `.harness/project.json` `[category-vocabulary]` | `[Category("smoke")]` |
+| Category | `smoke`, `regression`, or the project's list in `.harness/project.json`; plus the links `tc:<id>` (the test case it automates) and `bug:<id>` (a known defect) `[category-vocabulary]` | `[Category("smoke")]`, `[Category("tc:TC-012")]` |
 
 **Locator suffixes (closed list):** `Button`, `Input`, `Link`, `Header`, `Heading`, `Text`,
 `Image`, `Icon`, `Checkbox`, `Radio`, `Dropdown`, `List`, `Table`, `Row`, `Cell`, `Form`,
@@ -280,7 +280,7 @@ A test that fails because the product is wrong is **working**. Keep it, keep it 
 
 1. Write the test against the documented behaviour, exactly as if the product were fixed.
 2. Add the category `bug:<id>`, for example `[Category("bug:BUG-17")]`, next to its normal category.
-3. Link the bug report (docs/bug-reports/ or the tracker) in the test's XML doc comment.
+3. The bug report is `docs/qa/bug-reports/BUG-<n>.md` (the bug-report skill), and `Harness.Tools traceability` checks that the category names it. Optionally link an external issue in the test's XML doc comment.
 4. CI reports `bug:` failures separately as known failures, so new failures still stand out. When the fix ships, the test turns green on its own.
 
 | Thought | Reality |

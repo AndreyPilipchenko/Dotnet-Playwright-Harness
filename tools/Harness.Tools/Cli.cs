@@ -2,6 +2,7 @@ using Harness.Tools.Conventions;
 using Harness.Tools.Hooks;
 using Harness.Tools.Installing;
 using Harness.Tools.Scaffolding;
+using Harness.Tools.Traceability;
 
 namespace Harness.Tools;
 
@@ -28,7 +29,7 @@ internal static class Cli
                                  --target-framework <tfm>          (default: from project.json or net10.0)
                                  --settings-template <file>        (default: templates/settings.harness.json)
         {{ConventionCommand.Usage.TrimEnd()}}
-          traceability         Planned
+        {{TraceabilityCommand.Usage.TrimEnd()}}
           ci-summary           Planned
           dashboard            Planned
           secret-scan          Planned
@@ -38,7 +39,7 @@ internal static class Cli
 
     private static readonly string[] PlannedCommands =
     [
-        "traceability", "ci-summary", "dashboard", "secret-scan", "tracker", "validate-skills",
+        "ci-summary", "dashboard", "secret-scan", "tracker", "validate-skills",
     ];
 
     public static int Run(IReadOnlyList<string> args, TextReader stdin, TextWriter stdout, TextWriter stderr)
@@ -61,6 +62,8 @@ internal static class Cli
                 return HookRunner.Run(rest.FirstOrDefault(), stdin, stdout, stderr);
             case "check-conventions":
                 return ConventionCommand.Run(rest, stdout, stderr);
+            case "traceability":
+                return TraceabilityCommand.Run(rest, stdout, stderr);
             case "scaffold":
                 return RunScaffold(rest, stdout, stderr);
             case "install":

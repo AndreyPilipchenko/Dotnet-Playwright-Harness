@@ -46,6 +46,21 @@ and raise the mismatch.
 | Test attributes, categories, data rows, hooks, parallelism or `dotnet test` commands for NUnit, xUnit or MSTest | test-framework |
 | Build settings, analyzers, nullable, async rules, packages and versions | csharp-standards |
 
+### QA lifecycle
+
+The records live in `docs/qa/` and `Harness.Tools traceability` checks the links between them.
+Asked to "automate" a story, start with requirements-analysis and test-case-design, then come back
+to the table above for the code.
+
+| Working on | Skill |
+|---|---|
+| A story, spec or ticket to analyze; requirement records, gaps and questions | requirements-analysis |
+| Scope, risks, levels and entry or exit criteria for a release or feature | test-planning |
+| Test case records: steps, expected results, priority, what to automate, `tc:<id>` links | test-case-design |
+| What a requirement, application or framework change affects, and what to rerun | impact-analysis |
+| A confirmed product defect: the bug record, `bug:<id>`, an optional GitHub issue, closing it | bug-report |
+| Coverage and QA status from the records | plan-tracker |
+
 ## Before you finish
 
 Run `dotnet .harness/tools/bin/Harness.Tools.dll check-conventions` and fix every finding.

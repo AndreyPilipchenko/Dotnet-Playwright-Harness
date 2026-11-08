@@ -128,7 +128,7 @@ internal static partial class ConventionRules
             "A test class is named <Feature>Tests and lives in <Feature>Tests.cs, so its data file can be found.",
             TestsOnly, TestClassNaming),
         new("category-vocabulary", Severity.Warn,
-            "Categories drive the CI filters; use the project vocabulary (.harness/project.json) or bug:<id>.",
+            "Categories drive the CI filters; use the project vocabulary (.harness/project.json), bug:<id> or tc:<id>.",
             TestLayers, CategoryVocabulary),
         new("locator-naming", Severity.Fail,
             "Locator members are PascalCase and end in their element kind (EmailInput, SaveButton), so actions read clearly.",
@@ -316,23 +316,10 @@ internal static partial class ConventionRules
             .Select(c => new RuleHit(LineOf(c.Identifier)));
     }
 
-    private static IEnumerable<RuleHit> CategoryVocabulary(SourceFile f, RuleContext context)
-    {
-        foreach (var attribute in f.Nodes<AttributeSyntax>())
-        {
-            var category = AttributeName(attribute) switch
-            {
-                "Category" or "TestCategory" => StringArgument(attribute, 0),
-                "Trait" when StringArgument(attribute, 0) == "Category" => StringArgument(attribute, 1),
-                _ => null,
-            };
-
-            if (category is not null && !context.Categories.Contains(category, StringComparer.Ordinal) && !BugCategory().IsMatch(category))
-            {
-                yield return Hit(attribute);
-            }
-        }
-    }
+    private static IEnumerable<RuleHit> CategoryVocabulary(SourceFile f, RuleContext context) =>
+        f.Categories()
+            .Where(c => !context.Categories.Contains(c.Category, StringComparer.Ordinal) && !LinkCategory().IsMatch(c.Category))
+            .Select(c => Hit(c.Attribute));
 
     private static IEnumerable<RuleHit> LocatorNaming(SourceFile f, RuleContext _) =>
         LocatorMembers(f)
@@ -572,8 +559,9 @@ internal static partial class ConventionRules
         }
     }
 
-    [GeneratedRegex(@"^bug:[A-Za-z0-9-]+$")]
-    private static partial Regex BugCategory();
+    // bug:<id> links a known product defect, tc:<id> links the test case a test automates.
+    [GeneratedRegex(@"^(bug|tc):[A-Za-z0-9-]+$")]
+    private static partial Regex LinkCategory();
 
     [GeneratedRegex(@"^[A-Z][A-Za-z0-9]*$")]
     private static partial Regex PascalCase();
