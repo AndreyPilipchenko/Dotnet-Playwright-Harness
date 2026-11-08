@@ -24,6 +24,7 @@ internal static partial class ConventionRules
     private static readonly Layer[] TestLayers = [Layer.Tests, Layer.Setup];
     private static readonly Layer[] TestsOnly = [Layer.Tests];
     private static readonly Layer[] PagesOnly = [Layer.Pages];
+    private static readonly Layer[] UtilsOnly = [Layer.Utils];
     private static readonly Layer[] Business = [Layer.Pages, Layer.Apis, Layer.Dbs, Layer.Helpers];
 
     private static readonly string[] SkipCalls = ["Ignore", "Inconclusive", "Skip", "SkipWhen", "SkipUnless"];
@@ -159,6 +160,18 @@ internal static partial class ConventionRules
         new("mixed-test-frameworks", Severity.Fail,
             "A project uses one test framework, the one recorded in .harness/project.json.",
             TestLayers, MixedTestFrameworks),
+        new("extension-placement", Severity.Fail,
+            "Extension members are technical plumbing and live only in src/<Name>.Framework/Utils/Extensions/. Business steps belong in a page or Api class.",
+            AnyLayer, ExtensionPlacement),
+        new("extension-naming", Severity.Warn,
+            "A class that declares extensions is named <ExtendedType>Extensions, in a file of the same name.",
+            UtilsOnly, ExtensionNaming),
+        new("no-assertion-in-extension", Severity.Fail,
+            "Extensions never assert; checks live in Verify* methods on business classes. Throw from an extension if arrangement fails.",
+            UtilsOnly, NoAssertionInExtension),
+        new("no-element-locator-extension", Severity.Fail,
+            "An extension that names a specific element (a label, a name, a selector) is a page member in disguise. Declare that locator in its page; extensions take selectors as parameters.",
+            UtilsOnly, NoElementLocatorExtension),
         new("test-data-folder", Severity.Fail,
             "Test data lives in resources/testData (camelCase); a resources/test-data folder is not copied to the output.",
             [], File: null, Repository: TestDataFolder),
@@ -233,6 +246,27 @@ internal static partial class ConventionRules
                     _ => false,
                 })
             .Select(Hit);
+
+    private static IEnumerable<RuleHit> ExtensionPlacement(SourceFile f, RuleContext _) =>
+        f.Layer == Layer.Utils && f.RelativePath.Replace('\\', '/').Contains("/Utils/Extensions/", StringComparison.Ordinal)
+            ? []
+            : f.ExtensionDeclarations.Select(Hit);
+
+    private static IEnumerable<RuleHit> ExtensionNaming(SourceFile f, RuleContext _) =>
+        f.ExtensionClasses
+            .Where(c => !c.Identifier.Text.EndsWith("Extensions", StringComparison.Ordinal)
+                || c.Identifier.Text != Path.GetFileNameWithoutExtension(f.RelativePath))
+            .Select(Hit);
+
+    private static IEnumerable<RuleHit> NoAssertionInExtension(SourceFile f, RuleContext _) => Calls(f, c =>
+        IsInExtension(c)
+        && (IsExpect(c) || Name(c) == "Should" || AssertTypes.Any(t => ReceiverIs(c, t))));
+
+    // Generic helpers take the selector as a parameter; a string literal in the locator call names one element.
+    private static IEnumerable<RuleHit> NoElementLocatorExtension(SourceFile f, RuleContext _) => Calls(f, c =>
+        IsInExtension(c)
+        && IsLocatorCall(c)
+        && c.ArgumentList.DescendantNodes().OfType<LiteralExpressionSyntax>().Any(l => l.IsKind(SyntaxKind.StringLiteralExpression)));
 
     private static IEnumerable<RuleHit> LocatorInMethodBody(SourceFile f, RuleContext _) => Calls(f, c =>
         IsLocatorCall(c) && EnclosingMember(c) switch

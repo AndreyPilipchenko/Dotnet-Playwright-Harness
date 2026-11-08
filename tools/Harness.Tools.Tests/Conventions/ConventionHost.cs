@@ -10,6 +10,7 @@ internal sealed class ConventionHost : IDisposable
     public const string PagePath = "src/Acme.Framework/Pages/LoginPage.cs";
     public const string ApiPath = "src/Acme.Framework/Apis/UsersApi.cs";
     public const string UtilPath = "src/Acme.Framework/Utils/Waits.cs";
+    public const string ExtensionPath = "src/Acme.Framework/Utils/Extensions/LocatorExtensions.cs";
 
     public TempDir Root { get; } = new();
 

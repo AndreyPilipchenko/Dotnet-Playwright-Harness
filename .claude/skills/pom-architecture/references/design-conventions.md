@@ -22,6 +22,7 @@ src/<Name>.Framework/          framework-neutral: references Microsoft.Playwrigh
   Dbs/       <Domain>Db        DB business operations
   Helpers/   <Noun>Actions     a business flow that spans several pages or services
   Utils/                       technical plumbing: TestData, retries, HTTP and DB connections, logging
+    Extensions/  <Type>Extensions   extension members on Playwright and BCL types (§8)
   Config/                      environment coordinates and named Timeouts; never secrets
 tests/<Name>.Tests/            the only project that references NUnit, xUnit or MSTest
   Setup/     UiTest            the one base class, wrapping the adapter's PageTest
@@ -52,6 +53,7 @@ resources/testData/            <Feature>TestData.json, one per test class
 | Private field | `_camelCase` | `_page`, `_request` |
 | Constant | PascalCase | `Url`, `SlowSurface` |
 | Interface | `I` prefix (C# idiom) | `IOrderSource` |
+| Extension class and file | `<ExtendedType>Extensions` in `Utils/Extensions/<ExtendedType>Extensions.cs` `[extension-naming]` (§8) | `ApiResponseExtensions`, `LocatorExtensions` |
 | Test class and file | `<Feature>Tests` in `<Feature>Tests.cs` `[test-class-naming]` | `LoginTests.cs` |
 | Test method | What the system does, ending in `Async` | `ShowsErrorForWrongPasswordAsync` |
 | Test data | `resources/testData/<Feature>TestData.json` (camelCase folder, never `test-data`) `[test-data-pairing]` `[test-data-folder]` | `LoginTestData.json` |
@@ -318,7 +320,45 @@ public Task VerifyOrderStatusAsync(string id, string status) =>
     Expect(OrderStatusCell(id)).ToHaveTextAsync(status, new() { Timeout = Timeouts.SlowSurface });
 ```
 
-## 8. Mapping from the TypeScript conventions
+## 8. Extension members
+
+Extension members add reusable technical helpers to types you don't own, such as
+`IAPIResponse`, `ILocator` or `string`. They are Utils code: plumbing that makes business classes
+shorter, never business behaviour of their own.
+
+- **Where:** only in `src/<Name>.Framework/Utils/Extensions/`, never in Pages, Apis, Dbs, Helpers, Config or the tests project. `[extension-placement]`
+- **Naming:** one `public static class <ExtendedType>Extensions` per extended type, in a file with the same name. `[extension-naming]`
+  - Members follow §2: PascalCase, and `Async` on anything returning `Task` or `ValueTask`.
+- **Form:** classic static methods with a `this` parameter are the default. They work for every target framework.
+  - A C# 14 `extension(T receiver) { … }` block is allowed when you need an extension **property**. Only `net10.0` is verified.
+  - Both forms are checked the same way.
+- **What belongs in one:** a generic step that any page or Api class could use with its own arguments.
+  - Raising a clear error from a failed response (the "fail loudly" rule from §5).
+  - Reading a value out of a JSON body.
+  - Replacing the text of any input.
+- **What never belongs in one:**
+  - **A specific element.** An extension that passes a literal label, name, test id or selector to `GetBy…` or `Locator` is a page member in disguise. It leaks a locator that iron law 2 keeps private. Declare it in its page. Generic helpers take the selector or role as a parameter, or filter by an argument. `[no-element-locator-extension]`
+  - **A business step**, such as `page.LoginAsync(…)`. It belongs to the page or Api class that owns it.
+  - **An assertion.** Checks live in `Verify*` methods (iron law 6). An extension that finds a problem throws. `[no-assertion-in-extension]`
+  - **Test data, business types, or a test framework.** Utils sits below the business layer (§1).
+
+```csharp
+// src/<Name>.Framework/Utils/Extensions/ApiResponseExtensions.cs
+public static class ApiResponseExtensions
+{
+    public static async Task<string> ReadIdAsync(this IAPIResponse response, string operation)
+    {
+        ArgumentNullException.ThrowIfNull(response);
+        var body = response.Ok ? await response.JsonAsync() : null;
+        return body?.GetProperty("id").GetString()
+            ?? throw new InvalidOperationException($"{operation} failed with {response.Status}.");
+    }
+}
+```
+
+With it, `OrdersApi.CreateOrderAsync` in §5 shrinks to the request, `ReadIdAsync("POST /api/orders")`, and recording the id.
+
+## 9. Mapping from the TypeScript conventions
 
 These differences are settled. Do not reintroduce the TypeScript form.
 
@@ -334,14 +374,14 @@ These differences are settled. Do not reintroduce the TypeScript form.
 | `Expects.ts` assertion facade | `Assertions.Expect` inside `Verify*` methods | The method name carries the business meaning |
 | `ApiActions` facade in utils | `<Domain>Api` classes over `IAPIRequestContext`; shared plumbing in Utils | Same split, .NET types |
 
-## 9. Exemptions and legacy
+## 10. Exemptions and legacy
 
 - A deliberate exception carries `// conventions-ok: <reason>` on the line, or on the line above. The reason is required; reviewers read every one.
   - `secret-literal` and `playwright-internal-api` cannot be exempted.
 - A project adopting the harness can record its existing findings once with `check-conventions --write-baseline`. They are then reported as legacy and never hide a new finding.
   - Fix legacy code when you touch it for another reason. Don't mass-rename working code.
 
-## 10. Review checklist
+## 11. Review checklist
 
 - [ ] Each new class is in the right layer and folder; dependencies point down.
 - [ ] Names follow §2, including the locator suffixes and `Async`.
@@ -350,6 +390,7 @@ These differences are settled. Do not reintroduce the TypeScript form.
 - [ ] Tests contain only business calls; every assertion is in a `Verify*` method; each test verifies at least once.
 - [ ] Inputs and expected values come from the paired JSON; secrets come from the environment.
 - [ ] No fixed waits; slow surfaces use named timeouts.
+- [ ] Extension members are generic plumbing in `Utils/Extensions/` (§8): no specific elements, business steps or assertions.
 - [ ] State is arranged and cleaned up through Apis or Dbs where possible; tests are independent and parallel-safe.
 - [ ] Nothing is skipped or weakened; known product defects are red, linked and categorized `bug:<id>`.
 - [ ] New methods were checked against existing ones; only what the tests need was built.

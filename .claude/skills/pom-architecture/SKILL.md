@@ -23,6 +23,7 @@ and raise the mismatch.
 | `src/<Name>.Framework/Apis/`, `Dbs/` | `<Domain>Api`, `<Domain>Db`: business operations | assertions in actions |
 | `src/<Name>.Framework/Helpers/` | `<Noun>Actions`: flows across pages or services | locators of their own |
 | `src/<Name>.Framework/Utils/`, `Config/` | `TestData`, `ApiContext`, retries, `Timeouts` | business classes |
+| `src/<Name>.Framework/Utils/Extensions/` | `<Type>Extensions`: generic extension members | specific elements, business steps, assertions |
 | `tests/<Name>.Tests/Setup/` | `UiTest`, the only base class | tests |
 | `tests/<Name>.Tests/Ui/`, `Api/` | `<Feature>Tests`: business calls only | locators, `Expect`, HTTP, `if`/loops, `try`, skips |
 | `resources/testData/` | `<Feature>TestData.json` | secrets |
