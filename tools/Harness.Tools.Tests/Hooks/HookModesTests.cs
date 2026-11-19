@@ -335,7 +335,9 @@ public sealed class HookModesTests : IDisposable
         var r = Start();
 
         Assert.Equal(0, r.Code);
-        Assert.Contains("CLAUDE.md", r.Out, StringComparison.Ordinal);
+        // Consumer projects get no CLAUDE.md from the harness; routing lives in pom-architecture.
+        Assert.Contains("pom-architecture", r.Out, StringComparison.Ordinal);
+        Assert.DoesNotContain("CLAUDE.md", r.Out, StringComparison.Ordinal);
         Assert.Contains("branch", r.Out, StringComparison.Ordinal);
     }
 

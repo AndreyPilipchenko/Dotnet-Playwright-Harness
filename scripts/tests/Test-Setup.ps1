@@ -75,6 +75,7 @@ try {
     Check 'copies the agents' (Test-Path (Join-Path $project '.claude\agents\suite-runner.md'))
     $projectJson = Read-Json (Join-Path $project '.harness\project.json')
     Check 'records the framework' ($projectJson.framework -eq 'nunit' -and $projectJson.name -eq 'Acme.Shop')
+    Check 'prints the scaffold command with the recorded values' ($r.Output -match 'scaffold --framework nunit --name Acme\.Shop ')
     $settings = Join-Path $project '.claude\settings.json'
     Check 'merges 8 harness hooks' ((Get-HarnessHandlerCount $settings) -eq 8)
     $manifest = [IO.File]::ReadAllText((Join-Path $project '.harness\manifest.json'))
