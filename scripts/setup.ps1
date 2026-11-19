@@ -288,6 +288,13 @@ if ($conflicts.Count -gt 0) {
 Write-Host ''
 Write-Host 'Harness ready. Restart Claude Code in this project so it loads the hooks.'
 if (-not (Test-Path -LiteralPath (Join-Path $projectRoot 'src')) -and -not (Test-Path -LiteralPath (Join-Path $projectRoot 'tests'))) {
+    $hintFramework = '<framework>'
+    $hintName = '<Name>'
+    if (Test-Path -LiteralPath $projectJson) {
+        $settings = Get-Content -LiteralPath $projectJson -Raw | ConvertFrom-Json
+        if ($settings.PSObject.Properties['framework'] -and $settings.framework) { $hintFramework = $settings.framework }
+        if ($settings.PSObject.Properties['name'] -and $settings.name) { $hintName = $settings.name }
+    }
     Write-Host 'To create the walking skeleton, ask Claude to scaffold the framework, or run:'
-    Write-Host "  dotnet `"$toolOutput\Harness.Tools.dll`" scaffold --framework <framework> --name <Name> --output `"$projectRoot`""
+    Write-Host "  dotnet `"$toolOutput\Harness.Tools.dll`" scaffold --framework $hintFramework --name $hintName --output `"$projectRoot`""
 }

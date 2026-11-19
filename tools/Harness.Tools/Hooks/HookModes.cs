@@ -173,7 +173,7 @@ internal static class HookModes
         var root = input.Context.ProjectRoot;
         var text = new StringBuilder()
             .AppendLine("Harness reminders:")
-            .AppendLine("- Route each framework task through the intent table in CLAUDE.md, and use the skill it names before changing files.")
+            .AppendLine("- Start each framework task with the pom-architecture skill: its Routing table names the skill to use before changing files.")
             .AppendLine("- Work on a named branch (automation/, harness/, feature/, fix/). Never push to the default branch. Commit, push or open a PR only when the user asks.")
             .AppendLine("- Before committing, run Harness.Tools check-conventions and fix what it reports.");
 
