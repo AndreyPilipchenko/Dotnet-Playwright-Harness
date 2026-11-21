@@ -60,6 +60,8 @@ public class ConventionRuleTests
 
         { "test-data-pairing", TestPath, "public class LoginTests // <-\n{\n    [Test]\n    public Task LogsInAsync() => Task.CompletedTask;\n}" },
 
+        { "secrets-remembered", SecretsPath, "public static class Secrets // <-\n{\n    public static string Get(string name) => Environment.GetEnvironmentVariable(name) ?? throw new InvalidOperationException(name);\n}" },
+
         { "test-data-source", TestPath, "public class LoginTests\n{\n    private static readonly LoginTestData Data = TestData.Load<LoginTestData>(\"Checkout\"); // <-\n}" },
         { "test-data-source", TestPath, "public class LoginTests\n{\n    void X()\n    {\n        var json = File.ReadAllText(\"other.json\"); // <-\n    }\n}" },
 
@@ -142,6 +144,8 @@ public class ConventionRuleTests
         { "locator-in-method-body", PagePath, "class LoginPage\n{\n    private ILocator SaveButton => _page.GetByRole(AriaRole.Button);\n\n    private ILocator ProductRow(string name) => _page.GetByRole(AriaRole.Row, new() { Name = name });\n\n    public Task SaveAsync() => SaveButton.ClickAsync();\n}" },
         { "timeout-literal", PagePath, "class LoginPage\n{\n    public Task VerifySavedAsync() =>\n        Expect(SavedMessage).ToBeVisibleAsync(new() { Timeout = Timeouts.SlowSurface });\n}" },
         { "secret-literal", PagePath, "class LoginPage\n{\n    private static readonly string Password = Environment.GetEnvironmentVariable(\"APP_PASSWORD\") ?? string.Empty;\n}" },
+        { "secrets-remembered", SecretsPath, "public static class Secrets\n{\n    public static string Get(string name)\n    {\n        var value = Environment.GetEnvironmentVariable(name) ?? throw new InvalidOperationException(name);\n        Redaction.Remember(value);\n        return value;\n    }\n}" },
+        { "secrets-remembered", UtilPath, "public static class Waits\n{\n}" },
         { "test-data-source", TestPath, "public class LoginTests\n{\n    private static readonly LoginTestData Data = TestData.Load<LoginTestData>(\"Login\");\n}" },
         { "test-class-naming", TestPath, "public class LoginTests\n{\n    [Test]\n    public Task LogsInAsync() => Task.CompletedTask;\n}" },
         { "category-vocabulary", TestPath, "public class LoginTests\n{\n    [Test, Category(\"smoke\")]\n    public Task AAsync() => Task.CompletedTask;\n\n    [Test, Category(\"regression\"), Category(\"bug:BUG-12\")]\n    public Task BAsync() => Task.CompletedTask;\n}" },
@@ -229,6 +233,44 @@ public class ConventionRuleTests
         var finding = Assert.Single(host.Check().Findings, f => f.Rule == "layer-boundary");
         Assert.Equal("src/Acme.Framework/Acme.Framework.csproj", finding.File);
         Assert.Equal(3, finding.Line);
+    }
+
+    [Theory]
+    [InlineData("""{ "user": { "password": "Pa55word!" } }""", 1)]
+    [InlineData("{\n  \"email\": \"a@b.test\",\n  \"accessToken\": \"abc\"\n}", 3)]
+    [InlineData("""[ { "API_KEY": "k1" } ]""", 1)]
+    public void SecretInTestData_ASecretNamedFieldWithAValue_IsRejected_WithoutShowingIt(string json, int line)
+    {
+        using var host = new ConventionHost().Write(PagePath, "class LoginPage { }").Write("resources/testData/LoginTestData.json", json);
+
+        var finding = Assert.Single(host.Check().Findings, f => f.Rule == "secret-in-test-data");
+        Assert.Equal("resources/testData/LoginTestData.json", finding.File);
+        Assert.Equal(line, finding.Line);
+        Assert.All(["Pa55word!", "\"abc\"", "k1"], v => Assert.DoesNotContain(v, finding.Excerpt ?? string.Empty, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SecretInTestData_ReadsAFileSavedWithABom()
+    {
+        // Review finding: Utf8JsonReader rejects a BOM, and Windows PowerShell 5.1 writes one.
+        using var host = new ConventionHost().Write(PagePath, "class LoginPage { }");
+        var path = Path.Combine(host.Root.Path, "resources", "testData", "LoginTestData.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, """{ "password": "Pa55word!" }""", new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+
+        Assert.Single(host.Check().Findings, f => f.Rule == "secret-in-test-data");
+    }
+
+    [Theory]
+    [InlineData("""{ "password": "" }""")]
+    [InlineData("""{ "wrongPassword": "not-it", "passwordHint": "pets", "token_type": "bearer" }""")]
+    [InlineData("""{ "password": null, "token": 42 }""")]
+    [InlineData("{ broken")]
+    public void SecretInTestData_EmptyOrHonestlyNamedValues_AreFine(string json)
+    {
+        using var host = new ConventionHost().Write(PagePath, "class LoginPage { }").Write("resources/testData/LoginTestData.json", json);
+
+        Assert.DoesNotContain(host.Check().Findings, f => f.Rule == "secret-in-test-data");
     }
 
     [Fact]

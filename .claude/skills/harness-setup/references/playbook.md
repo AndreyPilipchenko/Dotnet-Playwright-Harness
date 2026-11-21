@@ -81,6 +81,21 @@ It writes one file and never overwrites; build afterwards.
 
 The steps are in [signed-in sessions](../../utility-classes/references/signed-in-sessions.md#projects-scaffolded-before-this).
 
+**Browser diagnostics and masked traces** came later still. To add them:
+- Render `Utils/Redaction.cs` and `Utils/BrowserDiagnostics.cs` with `--only`, one at a time.
+- `Utils/Secrets.cs`:
+  - If the project has none, render it with `--only`.
+  - If it has its own, add `Redaction.Remember(value);` before it returns the value. check-conventions
+    flags it until then. `[secrets-remembered]`
+- `Utils/TraceFiles.cs` and `Setup/UiTest.cs` already exist, so `--only` won't overwrite them:
+  1. Scaffold the same framework into a scratch folder.
+  2. Copy `MaskOrRemove` into `TraceFiles`.
+  3. Bring `UiTest`'s setup and teardown in line: `BrowserDiagnostics.Attach(Context)`; then, on
+     failure, `TraceFiles.MaskOrRemove` on the saved trace, followed by the `Report()` lines on the
+     framework's test output.
+- Run check-conventions. Rename secret-named test data fields that hold made-up values, such as
+  `wrongPassword`, and move real credentials to `Secrets.Get`. `[secret-in-test-data]`
+
 ## 3. Configure
 
 - **Application URL:** tests read the `BASE_URL` environment variable (`Setup/UiTest.cs`). Ask for the test environment's URL. Never assume that production is acceptable.

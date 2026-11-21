@@ -28,7 +28,10 @@ selection already failed in this session with no edit since, the pre-shell hook 
 with a new label. In that case read the existing TRX. Never change the command just to get past
 the block. From the TRX or the output, read the
 outcome, the `<Message>` and the first lines of the stack trace. Note the exact file, line and
-assertion.
+assertion. For a UI test, also read the `Browser diagnostics` block in `<Output><StdOut>`: console
+errors, page errors, failed requests and 4xx or 5xx responses. A 500 or a page error there usually
+points to the product or the environment, not the test. The block is masked; never try to
+recover a `***` value.
 
 - **It passes now:** report that, with the run label. A single pass doesn't prove a flake, and the original failure still stands.
 - **It fails differently:** report both signatures.

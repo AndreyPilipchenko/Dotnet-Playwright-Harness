@@ -18,7 +18,7 @@ Read existing evidence before running anything.
 
 | Source | How | Don't |
 |---|---|---|
-| A local TRX file | Read `TestResults/<label>/*.trx`: the test's outcome, `<Message>` and the first lines of `<StackTrace>` | Paste the whole file into the conversation |
+| A local TRX file | Read `TestResults/<label>/*.trx`: the test's outcome, `<Message>`, the first lines of `<StackTrace>`, and for a UI test the `Browser diagnostics` block in `<Output><StdOut>`. That block holds console errors, page errors, failed requests and 4xx or 5xx responses, already masked (reporting) | Paste the whole file into the conversation |
 | A new local run | Scoped to that one test, with its own label (run-tests), through `suite-runner` | Rerun a command that just failed: the hook blocks it even with a new label. Read its TRX instead |
 | CI | `gh run list --json databaseId,workflowName,conclusion,headBranch`, then `gh run view <id> --json jobs`, then `gh run download <id> -n <results artifact> -D TestResults/ci/<id>` (gitignored), then run `ci-summary --results` on that folder and read the TRX there. Parse with `ConvertFrom-Json`, never `--jq` | Use `gh run view --log-failed` into the conversation (it can be over 1 MB). If you need a log, have `suite-runner` extract only the failing step |
 | The code | The test, its page, Api and Helpers methods, the paired JSON, and `git log -p --follow` on them since the last green run | Read the whole framework |

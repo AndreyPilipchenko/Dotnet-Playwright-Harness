@@ -40,22 +40,46 @@ public abstract class UiTest : PageTest
         TestContext.TestName is { } name
         && (GetType().GetMethod(name)?.IsDefined(typeof(SignedOutAttribute), inherit: false) ?? false);
 
+    private BrowserDiagnostics? _diagnostics;
+
     [TestInitialize]
     public async Task StartTraceAsync()
     {
+        _diagnostics = BrowserDiagnostics.Attach(Context);
         if (TraceFiles.Enabled)
         {
             await Context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true });
         }
     }
 
+    // A failed test gets a masked trace when TRACE_DIR is set, then what the browser said in its TRX output.
+    // The trace goes first: masking it also remembers any password typed into a password field.
     [TestCleanup]
     public async Task StopTraceAsync()
     {
-        if (TraceFiles.Enabled)
+        var failed = TestContext.CurrentTestOutcome == UnitTestOutcome.Failed;
+        try
         {
-            var failed = TestContext.CurrentTestOutcome == UnitTestOutcome.Failed;
-            await Context.Tracing.StopAsync(new() { Path = failed ? TraceFiles.PathFor($"{TestContext.FullyQualifiedTestClassName}.{TestContext.TestName}") : null });
+            if (TraceFiles.Enabled)
+            {
+                var path = failed ? TraceFiles.PathFor($"{TestContext.FullyQualifiedTestClassName}.{TestContext.TestName}") : null;
+                await Context.Tracing.StopAsync(new() { Path = path });
+                if (path is not null && TraceFiles.MaskOrRemove(path) is { } removed)
+                {
+                    TestContext.WriteLine(removed);
+                }
+            }
+        }
+        finally
+        {
+            // Written even when stopping the trace throws, such as after a browser crash.
+            if (failed)
+            {
+                foreach (var line in _diagnostics?.Report() ?? [])
+                {
+                    TestContext.WriteLine(line);
+                }
+            }
         }
     }
 }
