@@ -43,6 +43,10 @@ internal static partial class ConventionRules
         "NUnit", "xunit", "MSTest", "Microsoft.NET.Test.Sdk", "Microsoft.Playwright.NUnit", "Microsoft.Playwright.Xunit", "Microsoft.Playwright.MSTest",
     ];
 
+    // Adapter and harness bases that start a browser, and those that give no page.
+    private static readonly string[] BrowserBases = ["UiTest", "PageTest", "ContextTest", "BrowserTest"];
+    private static readonly string[] BrowserlessBases = ["ApiTest", "PlaywrightTest"];
+
     private static readonly string[] BusinessNamespaceSegments = ["Pages", "Apis", "Dbs", "Helpers"];
 
     private static readonly string[] LocatorSuffixes =
@@ -160,6 +164,9 @@ internal static partial class ConventionRules
         new("mixed-test-frameworks", Severity.Fail,
             "A project uses one test framework, the one recorded in .harness/project.json.",
             TestLayers, MixedTestFrameworks),
+        new("test-base-class", Severity.Warn,
+            "A test in Api/ derives from ApiTest, which starts no browser; a test in Ui/ derives from UiTest, which gives it a page.",
+            TestsOnly, TestBaseClass),
         new("extension-placement", Severity.Fail,
             "Extension members are technical plumbing and live only in src/<Name>.Framework/Utils/Extensions/. Business steps belong in a page or Api class.",
             AnyLayer, ExtensionPlacement),
@@ -469,6 +476,24 @@ internal static partial class ConventionRules
                 yield return Hit(attribute);
             }
         }
+    }
+
+    private static IEnumerable<RuleHit> TestBaseClass(SourceFile f, RuleContext _)
+    {
+        string[]? wrong = LayerMap.TestFolder(f.RelativePath) switch
+        {
+            "Api" => BrowserBases,
+            "Ui" => BrowserlessBases,
+            _ => null,
+        };
+        if (wrong is null)
+        {
+            return [];
+        }
+
+        return f.Nodes<ClassDeclarationSyntax>()
+            .Where(c => c.BaseList?.Types.Any(t => wrong.Contains(SimpleTypeName(t.Type))) == true)
+            .Select(c => new RuleHit(LineOf(c.Identifier)));
     }
 
     // ── repository checks ────────────────────────────────────────────────

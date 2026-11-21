@@ -278,6 +278,71 @@ public class ScaffolderTests
         Assert.Contains("1Bad", io.Err.ToString(), StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("nunit")]
+    [InlineData("xunit")]
+    [InlineData("mstest")]
+    public void Only_AddsOneFile_ToAnExistingProject(string framework)
+    {
+        using var dir = new TempDir();
+        dir.Write("tests/Acme.Shop.Tests/Setup/UiTest.cs", "// the project's own");
+
+        var written = Scaffolder.Run(Options(framework, dir.Path) with { Only = "Setup/ApiTest.cs" });
+
+        Assert.Equal(["tests/Acme.Shop.Tests/Setup/ApiTest.cs"], written);
+        Assert.Equal(2, Directory.GetFiles(dir.Path, "*", SearchOption.AllDirectories).Length);
+        var content = File.ReadAllText(dir.Combine("tests/Acme.Shop.Tests/Setup/ApiTest.cs"));
+        Assert.Contains("namespace Acme.Shop.Tests", content, StringComparison.Ordinal);
+        Assert.DoesNotContain("{{", content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Only_AcceptsTheFullOutputPath_AndBackslashes()
+    {
+        using var dir = new TempDir();
+
+        var written = Scaffolder.Run(Options("nunit", dir.Path) with { Only = @"tests\Acme.Shop.Tests\Setup\ApiTest.cs" });
+
+        Assert.Equal(["tests/Acme.Shop.Tests/Setup/ApiTest.cs"], written);
+    }
+
+    [Fact]
+    public void Only_MatchesWholeSegments()
+    {
+        using var dir = new TempDir();
+
+        var ex = Assert.Throws<ScaffoldException>(() => Scaffolder.Run(Options("nunit", dir.Path) with { Only = "piTest.cs" }));
+
+        Assert.Contains("piTest.cs", ex.Message, StringComparison.Ordinal);
+        Assert.Empty(Directory.GetFiles(dir.Path, "*", SearchOption.AllDirectories));
+    }
+
+    [Fact]
+    public void Only_NeverOverwrites()
+    {
+        using var dir = new TempDir();
+        dir.Write("tests/Acme.Shop.Tests/Setup/ApiTest.cs", "// mine");
+
+        Assert.Throws<ScaffoldException>(() => Scaffolder.Run(Options("nunit", dir.Path) with { Only = "Setup/ApiTest.cs" }));
+
+        Assert.Equal("// mine", File.ReadAllText(dir.Combine("tests/Acme.Shop.Tests/Setup/ApiTest.cs")));
+    }
+
+    [Fact]
+    public void Cli_Scaffold_Only_WritesOneFile()
+    {
+        using var dir = new TempDir();
+        var io = new Console3();
+
+        var code = Cli.Run(
+            ["scaffold", "--framework", "mstest", "--name", Name, "--output", dir.Path, "--templates", RepoPaths.Templates, "--only", "Setup/ApiTest.cs"],
+            io.In, io.Out, io.Err);
+
+        Assert.Equal(ExitCodes.Ok, code);
+        Assert.Single(Directory.GetFiles(dir.Path, "*", SearchOption.AllDirectories));
+        Assert.Contains("Setup/ApiTest.cs", io.Out.ToString(), StringComparison.Ordinal);
+    }
+
     private static TempDir FakeTemplates()
     {
         var dir = new TempDir();

@@ -70,6 +70,7 @@ always goes through the `suite-runner` agent.
 |---|---|
 | Running tests, scoping a run, reading exit codes, deciding whether a run is green | run-tests |
 | Automating a designed test case: observe, write, review, break it once, two green runs | automate-test |
+| Proving an existing or changed test can still fail ("break it", "make sure it can go red"), after any change | automate-test, [break it once](../automate-test/references/playbook.md#6-break-it-once) alone, in a scratch copy |
 | A failing, flaky or CI-only test: diagnose, and fix test or framework defects | maintain-test |
 | Running a test case by hand in the browser, without code, with a run record | execute-test |
 | TRX, summaries, the results page, traces, Allure, checking reports for secrets | reporting |

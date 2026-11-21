@@ -26,7 +26,9 @@ internal static class Cli
                                  --target-framework <tfm>          (default net10.0)
                                  --output <dir>                    (default: current directory)
                                  --templates <dir>                 (default: found above the tool)
-          scaffold-ci          Render the GitHub Actions workflows into a project where the harness is installed.
+                                 --only <path>                     render one file into an existing project,
+                                                                   e.g. Setup/ApiTest.cs after an update
+          scaffold-ci         Render the GitHub Actions workflows into a project where the harness is installed.
                                Existing files are never overwritten:
                                  --root <dir>                      (default: current directory)
                                  --templates <dir>                 (default: found above the tool)
@@ -134,7 +136,7 @@ internal static class Cli
 
     private static int RunScaffold(string[] args, TextWriter stdout, TextWriter stderr)
     {
-        if (!TryParseOptions(args, ["--framework", "--name", "--target-framework", "--output", "--templates"], out var values, out var error))
+        if (!TryParseOptions(args, ["--framework", "--name", "--target-framework", "--output", "--templates", "--only"], out var values, out var error))
         {
             stderr.WriteLine(error);
             return ExitCodes.Usage;
@@ -158,7 +160,10 @@ internal static class Cli
             name,
             values.GetValueOrDefault("--target-framework") ?? "net10.0",
             Path.GetFullPath(values.GetValueOrDefault("--output") ?? Directory.GetCurrentDirectory()),
-            templates);
+            templates)
+        {
+            Only = values.GetValueOrDefault("--only"),
+        };
 
         try
         {

@@ -103,6 +103,13 @@ public class ConventionRuleTests
 
         { "category-vocabulary", TestPath, "public class LoginTests\n{\n    [Test, Category(\"tc:TC 12\")] // <-\n    public Task AAsync() => Task.CompletedTask;\n}" },
 
+        // test-base-class: Api/ tests start no browser, Ui/ tests need a page
+        { "test-base-class", ApiTestPath, "public class UsersTests : UiTest // <-\n{\n}" },
+        { "test-base-class", ApiTestPath, "public class UsersTests : Microsoft.Playwright.NUnit.PageTest // <-\n{\n}" },
+        { "test-base-class", "tests/Acme.Tests/Api/Orders/OrdersTests.cs", "public class OrdersTests : BrowserTest // <-\n{\n}" },
+        { "test-base-class", TestPath, "public class LoginTests : ApiTest // <-\n{\n}" },
+        { "test-base-class", TestPath, "public class LoginTests : PlaywrightTest // <-\n{\n}" },
+
         // extension rules: classic `this` methods and C# 14 extension blocks
         { "extension-placement", PagePath, "static class PageExtensions\n{\n    public static Task OpenHomeAsync(this IPage page) => page.GotoAsync(\"/\"); // <-\n}" },
         { "extension-placement", TestPath, "static class LocatorExtensions\n{\n    extension(ILocator locator) // <-\n    {\n        public Task ReplaceAsync(string v) => locator.FillAsync(v);\n    }\n}" },
@@ -148,6 +155,11 @@ public class ConventionRuleTests
         { "async-naming", SetupPath, "abstract class UiTest : PageTest\n{\n    public override Task Setup() => Task.CompletedTask;\n}" },
         { "action-verify-separation", PagePath, "class LoginPage\n{\n    public Task VerifySavedAsync() => Expect(SavedMessage).ToBeVisibleAsync();\n\n    public Task SaveAsync() => SaveButton.ClickAsync();\n}" },
         { "mixed-test-frameworks", TestPath, "[TestClass]\npublic class LoginTests\n{\n    [TestMethod, TestCategory(\"smoke\")]\n    public Task AAsync() => Task.CompletedTask;\n}" },
+        { "test-base-class", ApiTestPath, "public class UsersTests : ApiTest\n{\n}" },
+        { "test-base-class", TestPath, "public class LoginTests : UiTest\n{\n}" },
+        { "test-base-class", SetupPath, "public abstract class UiTest : PageTest\n{\n}" },
+        { "test-base-class", "tests/Acme.Tests/Setup/ApiTest.cs", "public abstract class ApiTest : PlaywrightTest\n{\n}" },
+        { "test-base-class", "tests/Acme.Tests/Other/MiscTests.cs", "public class MiscTests : UiTest\n{\n}" },
         { "extension-placement", ExtensionPath, "public static class LocatorExtensions\n{\n    public static Task ReplaceTextAsync(this ILocator locator, string value) => locator.FillAsync(value);\n}" },
         { "extension-placement", ExtensionPath, "public static class LocatorExtensions\n{\n    extension(ILocator locator)\n    {\n        public Task ReplaceTextAsync(string value) => locator.FillAsync(value);\n    }\n}" },
         { "extension-placement", PagePath, "class LoginPage\n{\n    public Task SaveAsync(string value) => SaveButton.ClickAsync();\n}" },

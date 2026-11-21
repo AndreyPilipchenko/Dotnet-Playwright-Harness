@@ -6,6 +6,7 @@ namespace Harness.Tools.Tests.Conventions;
 internal sealed class ConventionHost : IDisposable
 {
     public const string TestPath = "tests/Acme.Tests/Ui/LoginTests.cs";
+    public const string ApiTestPath = "tests/Acme.Tests/Api/UsersTests.cs";
     public const string SetupPath = "tests/Acme.Tests/Setup/UiTest.cs";
     public const string PagePath = "src/Acme.Framework/Pages/LoginPage.cs";
     public const string ApiPath = "src/Acme.Framework/Apis/UsersApi.cs";
