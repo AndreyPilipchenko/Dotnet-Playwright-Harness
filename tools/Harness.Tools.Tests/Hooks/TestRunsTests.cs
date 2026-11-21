@@ -43,6 +43,28 @@ public class TestRunsTests
         Assert.NotEqual(TestRuns.Fingerprint("dotnet test --project tests/A/A.csproj"), TestRuns.Fingerprint(command));
     }
 
+    [Theory]
+    [InlineData("$env:BASE_URL='http://localhost:4200'; dotnet test --project tests/A/A.csproj")]
+    [InlineData("$env:API_URL = \"http://localhost:8091\"; dotnet test --project tests/A/A.csproj")]
+    [InlineData("BASE_URL=https://shop.test.example dotnet test --project tests/A/A.csproj")]
+    public void SettingTheApplicationAddress_GivesADifferentFingerprint(string command)
+    {
+        // Fixing an unset or wrong address is the remedy for an environment failure; the run that
+        // checks it must not be blocked as an unchanged rerun.
+        Assert.NotEqual(TestRuns.Fingerprint("dotnet test --project tests/A/A.csproj"), TestRuns.Fingerprint(command));
+    }
+
+    [Fact]
+    public void TheApplicationAddress_IsComparedByValue_InEitherShell()
+    {
+        Assert.Equal(
+            TestRuns.Fingerprint("$env:BASE_URL = 'http://localhost:4200'; dotnet test --project tests/A/A.csproj"),
+            TestRuns.Fingerprint("BASE_URL=http://localhost:4200 dotnet test --project tests/A/A.csproj"));
+        Assert.NotEqual(
+            TestRuns.Fingerprint("$env:BASE_URL = 'http://localhost:4200'; dotnet test --project tests/A/A.csproj"),
+            TestRuns.Fingerprint("$env:BASE_URL = 'http://localhost:4300'; dotnet test --project tests/A/A.csproj"));
+    }
+
     [Fact]
     public void TheBrowserSetting_IsComparedByValue_InEitherShell()
     {

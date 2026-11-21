@@ -25,7 +25,7 @@ It reads the framework and name from `.harness/project.json`, and never overwrit
 
 ## 2. Adapt it
 
-- **The application:** set the repository variable `BASE_URL`. The default branch is assumed to be `main`, so change `smoke.yml` if yours isn't.
+- **The application:** set the repository variable `BASE_URL`, and `API_URL` too when the API has its own origin (left unset, it is empty and Api classes use `BASE_URL`). The default branch is assumed to be `main`, so change `smoke.yml` if yours isn't.
 - **Secrets:** create them in the repository settings, then map each one onto the `uses: ./.github/actions/run-tests` step under `env:` as `${{ secrets.NAME }}`. Pass its name in `forbid-env`, so the results are searched for its value before they are published. Never read, print or ask for a value.
 - **Another category:** `filter-option` and `filter-value` take the framework's filter, as in test-framework.
 - **Reports stay private to the repository's readers.** They are uploaded as artifacts for 14 days. Publishing them to a site is a separate decision for the user, and `secret-scan` must pass first.

@@ -62,8 +62,8 @@ public sealed class OrdersApi : IAsyncDisposable
 }
 ```
 
-- **Endpoints are constants.** Paths relative to `BASE_URL`, which `ApiContext` sets.
-- **The class owns its request context,** created by a static `CreateAsync` factory from the adapter's `Playwright`. Connection details and keys come from the environment through `Utils/ApiContext` and `Utils/Secrets`, so a test only ever holds the business class.
+- **Endpoints are constants.** Paths relative to the API's base address, which `ApiContext` sets: `API_URL` when the API has its own origin (such as `http://localhost:8091` next to a UI on `:4200`), otherwise `BASE_URL`. Never invent another variable name for it.
+- **The class owns its request context,** created by a static `CreateAsync` factory from the adapter's `Playwright`, which an API-only test class gets from `ApiTest` (no browser). Connection details and keys come from the environment through `Utils/ApiContext` and `Utils/Secrets`, so a test only ever holds the business class.
 - **Inputs are parameters.** The payload is built from them, never hard-coded.
 - **Return what the test uses,** such as the new id, and nothing else. Return business values (an id, a status), never the raw `IAPIResponse`.
 - **Fail loudly on arrangement:** a failed create throws with the status (here through the `ReadIdAsync` extension). It never asserts and never retries.

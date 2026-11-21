@@ -20,6 +20,7 @@ public class ScaffolderTests
         "resources/testData/GreetingTestData.json",
         "tests/Acme.Shop.Tests/Acme.Shop.Tests.csproj",
         "tests/Acme.Shop.Tests/Setup/UiTest.cs",
+        "tests/Acme.Shop.Tests/Setup/ApiTest.cs",
         "tests/Acme.Shop.Tests/Ui/GreetingTests.cs",
     ];
 

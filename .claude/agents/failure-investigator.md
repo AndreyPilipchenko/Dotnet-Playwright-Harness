@@ -43,7 +43,7 @@ run, if given. Check for the usual causes:
 - **Timing:** acting before ready, a check on a list that's still loading, a missing web-first wait.
 - **Data:** a non-unique value, records left by another test, a failed seed, a changed expected value.
 - **Cleanup:** teardown didn't delete what an earlier test made.
-- **Environment:** `BASE_URL`, an expired secret, the app down, a browser not installed.
+- **Environment:** `BASE_URL` or `API_URL`, an expired secret, the app down, a browser not installed.
 - **Product:** the app no longer does what a documented requirement says.
 
 ## Step 3: hypotheses

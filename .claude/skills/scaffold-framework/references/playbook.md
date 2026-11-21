@@ -23,7 +23,7 @@ What you get:
 |---|---|
 | `global.json`, `Directory.Build.props`, `Directory.Packages.props`, `.editorconfig`, `.gitignore`, `<Name>.slnx` | Build layout (csharp-standards skill) |
 | `src/<Name>.Framework/` | Framework-neutral project: `Pages/GreetingPage.cs` (sample), `Utils/TestData.cs` |
-| `tests/<Name>.Tests/` | Test project: `Setup/UiTest.cs` (the one base class), `Ui/GreetingTests.cs` (sample) |
+| `tests/<Name>.Tests/` | Test project: `Setup/UiTest.cs` and `Setup/ApiTest.cs` (the two base classes), `Ui/GreetingTests.cs` (sample) |
 | `resources/testData/GreetingTestData.json` | Sample test data, paired with `GreetingTests` |
 | `.agents/skill-overlays/dotnet-test/run-tests.md` | This project's exact test commands, for the optional `dotnet-test` plugin |
 

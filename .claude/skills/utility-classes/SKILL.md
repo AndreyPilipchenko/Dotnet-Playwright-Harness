@@ -28,7 +28,7 @@ Helpers. Reading an environment variable, or polling until something is true, is
 |---|---|---|
 | `Utils/TestData` | Load `<Feature>TestData.json` (from the template) | `TestData.Load<OrdersTestData>("Orders")` |
 | `Utils/Secrets` | Read a credential from the environment; fail loudly if missing | `Secrets.Get("SHOP_PASSWORD")` |
-| `Utils/ApiContext` | Create an `IAPIRequestContext` with `BASE_URL` and a key header | used by `OrdersApi.CreateAsync` |
+| `Utils/ApiContext` | Create an `IAPIRequestContext` with `API_URL` (or `BASE_URL` when that is unset or empty) and a key header | used by `OrdersApi.CreateAsync` |
 | `Utils/DbConnections` | Open a `DbConnection` from a connection string in the environment | used to build an `OrdersDb` |
 | `Utils/UniqueData` | Values unique per test and run | `UniqueData.Email("buyer")` |
 | `Utils/Checks` | Compare values that have no web-first assertion | `Checks.Equal(expected, actual, "orders for Pliers")` |

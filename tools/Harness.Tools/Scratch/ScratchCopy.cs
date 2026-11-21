@@ -73,11 +73,21 @@ internal static class ScratchCopy
         }
     }
 
+    /// <summary>
+    /// Written into every copy, so <c>--remove</c> deletes only folders this command made. A copy
+    /// sits outside the project, where a recursive shell delete needs the user's approval.
+    /// </summary>
+    public const string MarkerFile = ".harness-scratch-copy";
+
+    /// <summary>True when <paramref name="folder"/> holds the marker that <see cref="Copy"/> writes.</summary>
+    public static bool IsMarked(string folder) => File.Exists(Path.Combine(folder, MarkerFile));
+
     /// <summary>Copies the working files of <paramref name="root"/> to <paramref name="target"/>; returns the count.</summary>
     public static int Copy(string root, string target)
     {
         var files = WorkingFiles(root);
         Directory.CreateDirectory(target);
+        File.WriteAllText(Path.Combine(target, MarkerFile), $"Copy of {root}. Delete with: scratch-copy --remove <this folder>\n");
         var copied = 0;
         foreach (var relative in files)
         {

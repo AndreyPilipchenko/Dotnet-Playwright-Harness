@@ -79,7 +79,7 @@ This proves each new test can fail. Do it after the review is clean, for every n
 4. **Expect red on that assertion:** exit 2, and the first error line names the changed value. Record `broke: red` in the notes.
    - **Still green:** the test doesn't check that result. Record `broke: green` and go back to Author. This is a blocking finding.
    - **Red for another reason** (build error, a different assertion): the break was wrong. Fix the break and try again.
-5. Delete the scratch folder. The repository was never touched, so nothing needs restoring.
+5. Delete the copy with `dotnet .harness/tools/bin/Harness.Tools.dll scratch-copy --remove <scratchpad>\break-<TC-id>`, not a shell delete: a recursive delete outside the project needs the user's approval, and it is refused in a headless session. The repository was never touched, so nothing needs restoring.
 
 For a case with several expected results, break the one most likely to be checked weakly: a text, a count, an absence. Break more than one when the review doubted them.
 
