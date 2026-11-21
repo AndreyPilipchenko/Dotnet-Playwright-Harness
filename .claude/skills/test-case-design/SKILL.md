@@ -22,6 +22,7 @@ the rules for writing a case, priority and the independent assessment.
 - Copy `assets/test-case-template.md` to `docs/qa/test-cases/TC-<n>.md`, numbered after the highest existing id. The file name equals the id.
 - `requirements:` lists the requirement ids the case covers, comma separated. `## Coverage` names the acceptance criteria (`REQ-001 AC-2`).
 - Set `priority` and `automation` as the playbook says. New cases start `planned` or `manual-only`.
+- When a case needs a signed-in user, its preconditions name the role (for example "signed in as a customer"), not the sign-in steps. A case about signing in itself lists the steps, and its test runs signed out.
 - When an expected outcome is missing, stop and add an open question to the requirement. A case with a guessed result is worse than no case.
 
 ## 3. Review in chat

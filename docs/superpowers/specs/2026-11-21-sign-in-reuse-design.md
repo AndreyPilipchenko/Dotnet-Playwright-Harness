@@ -16,9 +16,11 @@ sign-in half of the porting-notes item "Guidance on signing in once per role and
 
 - **Goals:**
   - A test class says in one line which role it runs as. With no role, nothing changes.
-  - Roles sign in before the first test, credentials from `Secrets.Get`. **The API is tried first**,
-    through the project's Api class. When the project has no API sign-in, or the API sign-in fails,
-    the role signs in through `LoginPage.LoginAsync` (user's decision).
+  - Roles sign in before the first test, credentials from `Secrets.Get`. **Each role has exactly one
+    sign-in, chosen when the automation is designed** (user's decision): the API, through the
+    project's Api class, when the app offers an API sign-in; otherwise the UI, through
+    `LoginPage.LoginAsync`. There is no fallback at run time. A role designed to sign in through the
+    API fails its tests when the API sign-in fails, and never switches to the login page.
   - A test in a class that has a role can still run the **regular login flow**, by overriding the
     role for that test (user's decision).
   - The same shape works on NUnit, xUnit v3 and MSTest v4.
@@ -57,18 +59,19 @@ before any page script.
 ## Design
 
 **Framework-neutral code (`templates/framework/…/Utils/SignedInSessions.cs`):**
-- It knows the roles and how each one signs in. A role is a name plus up to two async sign-ins, and
-  at least one is required:
-  - **API sign-in (tried first):** it works on the role's `IBrowserContext`. For an app that uses
-    cookies, it posts the login through `context.APIRequest`, which shares the context's cookies. For
-    an app that keeps a token in local storage, it gets the token from the project's Api class (for
-    example `AuthApi.SignInAsync`) and writes it into the app's origin.
-  - **UI sign-in (fallback):** it works on an `IPage`, using `LoginPage.LoginAsync`.
+- It knows the roles and how each one signs in. A role is a name plus **exactly one** async sign-in,
+  fixed when the automation is designed:
+  - **API sign-in (preferred when the app has one):** it works on the role's `IBrowserContext`. For
+    an app that uses cookies, it posts the login through `context.APIRequest`, which shares the
+    context's cookies. For an app that keeps a token in the browser, it gets the token from the
+    project's Api class (for example `AuthApi.SignInAsync`) and writes it into the app's origin.
+  - **UI sign-in (when the app has no API sign-in):** it works on an `IPage`, using
+    `LoginPage.LoginAsync`.
 
-  When the API sign-in is missing, the UI sign-in runs. When the API sign-in throws and a UI sign-in
-  exists, the UI sign-in runs, and the API failure is written to the test output so it isn't hidden
-  (builder's call). Either way, storage state is saved the same way. The project registers its roles
-  in one place, `Setup/Roles.cs` in the test project (see the next point).
+  If the role's sign-in fails, the role fails, as described below. It never tries the other method.
+  Choosing between the two is part of automation design. automate-test, and test-case-design where
+  it covers preconditions, say to prefer the API and to record the choice. The project registers its
+  roles in one place, `Setup/Roles.cs` in the test project (see the next point).
 - `SaveAllAsync(IBrowser browser, BrowserNewContextOptions options)` signs in each role in its own
   context, using the same base options as `UiTest`. It saves storage state to `PathFor(role)`, then
   closes the context. **A role that fails to sign in fails only its own tests (user's decision).**
@@ -76,10 +79,34 @@ before any page script.
   role. When a test of that role builds its context, it fails at once with "Role '<role>' could not
   sign in at the start of the run: <reason>". API tests, login-form tests and other roles still run.
   Anything wrong outside a single role, such as a browser that won't launch, does fail the whole run.
-- `PathFor(role)` points into a `.auth/` folder under the test output folder
-  (`AppContext.BaseDirectory`). That folder is under `bin/`, so it is gitignored and is never part
-  of `TestResults/` or `TRACE_DIR`.
-- `DeleteAll()` removes the folder at the end of the run.
+- `PathFor(role)` points into `.auth/<run-id>/` under the test output folder
+  (`AppContext.BaseDirectory`). The run id is a new GUID per test process. The folder is under `bin/`,
+  so it is gitignored and is never part of `TestResults/` or `TRACE_DIR`.
+- `DeleteAll()` removes this run's folder at the end of the run. It never touches another run's.
+- **Storage state only (user's decision, 2026-11-21 spike):** the saved session is Playwright's storage
+  state, which holds cookies and local storage. An app that keeps its sign-in in session storage
+  (Toolshop does) uses the fallback below, built by the project. The scaffold doesn't try to capture
+  session storage. The design follows test-design and automation guidelines, not one app's behaviour.
+
+**Parallel runs (user's request):**
+- Every role signs in inside the run-once hook, before the first test, so no test ever races to create
+  a session. During the run, tests only read the state files, and many contexts can open the same
+  file at once.
+- One run's folder per process (`.auth/<run-id>/`): two `dotnet test` runs from the same output folder,
+  or a CI retry, never delete or reuse each other's sessions. A file from an earlier run is never
+  used.
+- Under Microsoft Testing Platform each test project is its own process with its own output folder,
+  so projects never share sessions.
+- The guidance (test-classes, test-data) covers sharing one account across parallel tests:
+  - **Read-only tests share the role.**
+  - **A test that changes the account's own data** (cart, profile, settings) uses its own user, created
+    through the API for that test, or a role kept for that purpose. Otherwise parallel tests see each
+    other's changes.
+  - **A test that signs out, changes the password or revokes tokens never uses a shared role.** It is
+    `[SignedOut]` and signs in itself, because ending the shared session would sign out every
+    parallel test of that role.
+  - **An app that rotates refresh tokens on use, or allows one session per user,** can't share a saved
+    session across parallel contexts. It uses the fallback, signing in per test through the API.
 
 **Test project (`templates/<fw>/tests/__Name__.Tests/Setup/`):**
 - `Roles.cs`: the project's role list. It ships empty, with a comment showing one entry. With no roles,
@@ -146,14 +173,15 @@ Against Toolshop (`sprint5-with-bugs`, running locally), record in `docs/framewo
 5. That throwing from `ContextOptions()`, for a role that failed to sign in, fails only that test and
    shows the message on each framework, and doesn't stop the run.
 6. That `scaffold --only` renders each new file on its own, the way Setup/ApiTest.cs does.
-7. That an API sign-in gives a saved state that signs in a new context. Toolshop: the login endpoint
-   and token, and how the app reads the token (the key, if it is local storage).
+7. That an API sign-in through `context.APIRequest` sets the context's cookies, so the saved state
+   signs in a new context. Checked on the stand-in app. Toolshop's API login and session-storage
+   token are recorded as the fallback's worked example (done 2026-11-21).
 8. That `UiTest` can see the current test method's `[SignedOut]` attribute inside `ContextOptions()`,
    on each framework. If one framework can't, the fallback is a `protected virtual bool SignedOut`
    the test class sets per test. That is a design change, so it comes back to the user.
 
-If Toolshop keeps the token in session storage, the scaffolded design still stands, but the spike
-records that the fallback is what Toolshop needs. That comes back to the user before building.
+Done on 2026-11-21: Toolshop keeps the token in session storage. The user chose storage state only,
+with Toolshop as the fallback's worked example.
 
 ## Tests
 
@@ -164,10 +192,15 @@ records that the fallback is what Toolshop needs. That comes back to the user be
 - The end-to-end scaffold check builds all three frameworks with warnings as errors. The skeleton's
   greeting test still passes with no roles.
 - `check-conventions` is clean on the rendered skeleton.
-- A scratch-copy check on each framework against Toolshop:
+- A scratch-copy check on each framework against a **small stand-in app served from the scratch
+  project** by a local `HttpListener`, which keeps its sign-in in a cookie and in local storage. A
+  route would have to be added to every context, so a listener is simpler. This checks the
+  feature against the behaviour it supports, not against Toolshop. Toolshop, which uses session
+  storage, is the worked example for the fallback, verified in the spike. The check covers:
   - one role with good credentials and one with a wrong password
-  - the good role's test passes signed in, once through the API sign-in and once with only the UI
-    sign-in registered
+  - an API role's test and a UI role's test both pass signed in
+  - an API role whose API sign-in fails makes its tests fail with the role message, and the login page
+    is never opened
   - a `[SignedOut]` test in the same class runs the login form
   - the bad role's test fails with the role message
   - the greeting test still passes

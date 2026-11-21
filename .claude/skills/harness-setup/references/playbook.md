@@ -71,11 +71,21 @@ dotnet .harness/tools/bin/Harness.Tools.dll scaffold --framework <framework> --n
 
 It writes one file and never overwrites; build afterwards.
 
+**Signing in once per role** came later than some projects. To add it:
+- Render `Setup/Roles.cs`, `Setup/SignInOnce.cs` and `Utils/SignedInSessions.cs` with `--only`, one at a
+  time.
+- Edit the project's own `Setup/UiTest.cs` to match the template: `BaseContextOptions()`, `Role`, and
+  `StorageStatePath` unless the test has `[SignedOut]`.
+- Look for an existing run-once hook first. MSTest allows only one `[AssemblyInitialize]`, so the
+  sign-in goes into the existing one.
+
+The steps are in [signed-in sessions](../../utility-classes/references/signed-in-sessions.md#projects-scaffolded-before-this).
+
 ## 3. Configure
 
 - **Application URL:** tests read the `BASE_URL` environment variable (`Setup/UiTest.cs`). Ask for the test environment's URL. Never assume that production is acceptable.
 - **API URL:** when the API has its own origin, Api classes read `API_URL` (`Utils/ApiContext`); unset or empty, they use `BASE_URL`. Ask whether the API shares the app's origin.
-- **Secrets:** the framework reads them with `Secrets.Get("<NAME>")`, from the environment, and fails loudly when one is missing. Give the user the names to set. The harness denies reading `.env` files.
+- **Secrets:** the framework reads them with `Secrets.Get("<NAME>")`, from the environment, and fails loudly when one is missing. Give the user the names to set. The harness denies reading `.env` files. A signed-in role needs `<ROLE>_EMAIL` and `<ROLE>_PASSWORD`, for example `CUSTOMER_EMAIL`.
 - **Browser:** `BROWSER` (`chromium`, `firefox` or `webkit`) and `HEADED=1`. Install it once after a build: `tests/<Name>.Tests/bin/Debug/<tfm>/playwright.ps1 install chromium`.
 - **Page observation:** automate-test and execute-test copy `cli.config.json` with the app's origin when they need it. Nothing to do here.
 

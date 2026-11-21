@@ -24,6 +24,8 @@ apply here: runsettings are silently ignored (NUnit, MSTest) or rejected (xUnit)
 | Category | `[Category("smoke")]` | `[Trait("Category", "smoke")]` | `[TestCategory("smoke")]` |
 | Per-test setup | `[SetUp]` async `Task` | `InitializeAsync()` override | `[TestInitialize]` async `Task` |
 | Run a class alone | `[NonParallelizable]` | `[Collection("Serial")]` | `[DoNotParallelize]` |
+| Once per run (`Setup/SignInOnce.cs`) | `[SetUpFixture]` in the root test namespace, `[OneTimeSetUp]` / `[OneTimeTearDown]` | `[assembly: AssemblyFixture(typeof(T))]`, `T : IAsyncLifetime` | `[AssemblyInitialize]` / `[AssemblyCleanup]` on a static `[TestClass]`; only one per assembly |
+| Current test inside `ContextOptions()` | `TestContext.CurrentContext.Test.MethodName` | `TestContext.Current.TestMethod?.MethodName` | `TestContext.TestName` |
 
 Categories are `smoke`, `regression`, `bug:<id>`, or the project's own list in `.harness/project.json`.
 

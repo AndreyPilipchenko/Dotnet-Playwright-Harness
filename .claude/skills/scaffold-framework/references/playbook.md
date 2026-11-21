@@ -60,8 +60,13 @@ Do this in small steps, each ending with a green build, test run and `check-conv
    - Prefer `GetByRole`, `GetByLabel` and `GetByTestId`.
    - Create other layers (`Apis/`, `Dbs/`, `Helpers/`, `Config/`) only when the first test needs them, never empty.
 4. **Run it twice.** It must pass both times, or fail only on the assertion of a confirmed product defect (design-conventions §6).
-5. **Remove the sample:** `Pages/GreetingPage.cs`, `Ui/GreetingTests.cs` and `resources/testData/GreetingTestData.json`. Then build, test and check again.
-6. **Report:** what was scaffolded, the framework, the commands that passed, the test counts, the TRX path, and anything left unverified (other browsers, CI).
+5. **The first role, when tests need a signed-in user:**
+   - Add it to `Setup/Roles.cs`. Choose its one sign-in: `Role.ThroughApi` when the app has an API sign-in, otherwise `Role.ThroughLoginPage` with the `LoginPage.LoginAsync` you just wrote.
+   - Ask the user to set `<ROLE>_EMAIL` and `<ROLE>_PASSWORD`.
+   - Let the test classes that need it set `Role`. The tests of the login page itself stay signed out.
+   - First check that the app's session survives in storage state. A signed-in test passing twice shows it. If the app keeps its sign-in in session storage, use the fallback in [signed-in sessions](../../utility-classes/references/signed-in-sessions.md#when-storage-state-cant-carry-the-session) instead.
+6. **Remove the sample:** `Pages/GreetingPage.cs`, `Ui/GreetingTests.cs` and `resources/testData/GreetingTestData.json`. Keep `Setup/Roles.cs` and `Setup/SignInOnce.cs`. With no roles, they do nothing. Then build, test and check again.
+7. **Report:** what was scaffolded, the framework, the commands that passed, the test counts, the TRX path, and anything left unverified (other browsers, CI).
 
 ## 4. What not to do
 

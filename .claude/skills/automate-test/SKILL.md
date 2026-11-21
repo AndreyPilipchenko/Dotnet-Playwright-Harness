@@ -19,7 +19,7 @@ Keep the working notes for each case in `.harness/state/automation/<TC-id>.md`, 
 the review, the break result, the runs and the repair count.
 
 1. [Source](references/playbook.md#1-source): read the TC and its REQ. The steps and expected results are the oracle. A gap goes back to test-case-design.
-2. [Refine](references/playbook.md#2-refine): make the steps executable without changing what they prove.
+2. [Refine](references/playbook.md#2-refine): make the steps executable without changing what they prove. When the case needs a signed-in user, decide here which role it runs as. A new role gets one sign-in, chosen now: the API when the application has an API sign-in, otherwise the login page. Record the choice in the notes. There is no runtime fallback ([signed-in sessions](../utility-classes/references/signed-in-sessions.md)).
 3. [Observe](references/playbook.md#3-observe): see the real page with playwright-cli ([observe](references/observe.md)), or a probe test without it.
 4. [Author](references/playbook.md#4-author): the `test-author` agent writes the code. Its gate is a clean build, `check-conventions` and `traceability`.
 5. [Review](references/playbook.md#5-review): framework-review. Fresh agents try to refute the work and list every relaxed check, and `findings-verifier` checks the findings you'd act on (none, no verifier).

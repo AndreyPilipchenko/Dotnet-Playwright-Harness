@@ -132,6 +132,7 @@ public class OrdersTests : UiTest
 - **Per-test teardown** first deletes what the test created, through the same Api or Db class, then disposes it. Teardown runs after a failure too, so it needs no `try`.
 - Hook forms per framework (`[SetUp]`, `InitializeAsync`, `[TestInitialize]`) are in the test-framework skill.
 - **xUnit order:** `InitializeAsync` calls `base.InitializeAsync()` first, before it uses `Playwright`. `DisposeAsync` cleans up first, calls `base.DisposeAsync()` last, then `GC.SuppressFinalize(this)`, which analyzer rule CA1816 requires (docs/framework-matrix.md).
+- **A signed-in user:** set `protected override string? Role => Roles.Customer;` instead of signing in in each test. Mark a test that runs the login flow itself `[SignedOut]`. Login tests never set a role. When parallel tests share an account, the rules are in [signed-in sessions](../utility-classes/references/signed-in-sessions.md#parallel-runs): read-only tests share a role, a test that changes the account's data gets its own user, and sign-out tests are `[SignedOut]`.
 - Class-level setup (`[OneTimeSetUp]`, `IClassFixture<T>`, `[ClassInitialize]`) is not verified yet. Use per-test setup until it has been spiked and recorded in the framework matrix.
 
 ## 4. Categories

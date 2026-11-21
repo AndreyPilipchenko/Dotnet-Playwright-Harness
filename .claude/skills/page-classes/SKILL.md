@@ -83,6 +83,7 @@ public sealed class CheckoutActions
 ## 4. Business services, not element wrappers
 
 - Expose what a user does: `LoginAsync(email, password)`, `DeleteOrderAsync(id)`. Don't expose `ClickSignInAsync`, `FillEmailAsync` and `FillPasswordAsync` for a test to string together.
+- A role that signs in through the UI (`Role.ThroughLoginPage` in `Setup/Roles.cs`) reuses `LoginPage.LoginAsync`, so the sign-in is written once. The role's sign-in must wait until the signed-in page has loaded, for example with `WaitForURLAsync`, before the state is saved. Otherwise the session may not be there yet.
 - A small page still gets the full anatomy. A page with one locator and one action is fine.
 - No `try`/`catch`, no branching on page state, no loops. `[no-try-outside-utils]`
 - No dead members. Delete a locator or method once nothing uses it.
