@@ -49,6 +49,17 @@ Or `scripts/update.ps1 -Target <project>` from the harness repository.
 differences. Keep what they decide, then delete the `.harness-new` file. Your merged file still counts
 as changed locally, so a later update that touches it reports a conflict again.
 
+**Files a newer harness adds to the skeleton.** An update refreshes the payload, never your project's
+code. When a skill or `check-conventions` names a skeleton file the project lacks (such as
+`Setup/ApiTest.cs`, the browserless base for tests in `Api/`), render just that file with the values
+from `.harness/project.json`:
+
+```powershell
+dotnet .harness/tools/bin/Harness.Tools.dll scaffold --framework <framework> --name <name> --only Setup/ApiTest.cs
+```
+
+It writes one file and never overwrites; build afterwards.
+
 ## 3. Configure
 
 - **Application URL:** tests read the `BASE_URL` environment variable (`Setup/UiTest.cs`). Ask for the test environment's URL. Never assume that production is acceptable.

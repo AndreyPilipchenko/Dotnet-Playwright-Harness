@@ -11,7 +11,7 @@ Install, update and repair go through the two scripts, which are safe to re-run.
 | The request | Section |
 |---|---|
 | Install into a project, or set up after cloning | [1. Install](references/playbook.md#1-install) |
-| Update to a newer harness; `.harness-new` files | [2. Update](references/playbook.md#2-update) |
+| Update to a newer harness; `.harness-new` files; a skeleton file the project lacks (`Setup/ApiTest.cs`) | [2. Update](references/playbook.md#2-update) |
 | The application URL, secrets, optional tools | [3. Configure](references/playbook.md#3-configure) |
 | "Is this machine ready?" | [4. Check readiness](references/playbook.md#4-check-readiness) |
 | Undo an install or update | [5. Roll back](references/playbook.md#5-roll-back) |

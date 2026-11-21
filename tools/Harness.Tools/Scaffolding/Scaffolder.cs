@@ -8,7 +8,14 @@ internal sealed record ScaffoldOptions(
     string Name,
     string TargetFramework,
     string OutputDirectory,
-    string TemplatesDirectory);
+    string TemplatesDirectory)
+{
+    /// <summary>
+    /// Render just this file: its output path, or the end of it in whole segments (<c>Setup/ApiTest.cs</c>).
+    /// Lets an installed project add a file that a newer harness introduced.
+    /// </summary>
+    public string? Only { get; init; }
+}
 
 /// <summary>A problem the user or the template author must fix. Nothing was written.</summary>
 internal sealed class ScaffoldException(string message) : Exception(message);
@@ -63,7 +70,25 @@ internal static partial class Scaffolder
             ["Framework"] = framework,
         };
 
-        return Write(Render(options.TemplatesDirectory, ["build", "framework", framework], tokens), options.OutputDirectory);
+        var plan = Render(options.TemplatesDirectory, ["build", "framework", framework], tokens);
+        return Write(options.Only is { } only ? Select(plan, only) : plan, options.OutputDirectory);
+    }
+
+    private static SortedDictionary<string, string> Select(SortedDictionary<string, string> plan, string only)
+    {
+        var wanted = only.Replace('\\', '/').Trim('/');
+        var matches = plan
+            .Where(p => p.Key.Equals(wanted, StringComparison.OrdinalIgnoreCase)
+                || p.Key.EndsWith("/" + wanted, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (matches.Count != 1)
+        {
+            throw new ScaffoldException(matches.Count == 0
+                ? $"No template renders '{only}'. Give the file's path in the project, for example Setup/ApiTest.cs."
+                : $"'{only}' matches more than one file: {string.Join(", ", matches.Select(m => m.Key))}. Give more of the path.");
+        }
+
+        return new SortedDictionary<string, string>(matches.ToDictionary(), StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>Renders the GitHub Actions templates. Separate from the skeleton: a workflow runs as soon as it is pushed.</summary>
