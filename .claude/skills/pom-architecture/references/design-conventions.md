@@ -36,7 +36,7 @@ resources/testData/            <Feature>TestData.json, one per test class
   - The framework project never uses a test framework or the tests' namespaces.
   - Utils and Config never use business classes. `[layer-boundary]`
 - **No base page.** Pages compose what they need. A shared area such as a header or menu gets its own page class. Implementing an interface is fine. `[no-base-page]`
-  - The only base classes are `UiTest` (tests in `Ui/`, wraps the adapter's `PageTest`, sets context options in code) and `ApiTest` (tests in `Api/`, wraps the browserless `PlaywrightTest`, starts no browser), both in `tests/<Name>.Tests/Setup/`.
+  - The only base classes are `UiTest` (tests in `Ui/`, wraps the adapter's `PageTest`, sets context options in code) and `ApiTest` (tests in `Api/`, wraps the browserless `PlaywrightTest`, starts no browser), both in `tests/<Name>.Tests/Setup/`. A test in `Api/` on a browser base, or in `Ui/` on a browserless one, is flagged. `[test-base-class]`
 - **Folder names are exactly the ones above:** `Apis`, not `Api`; `Pages`, not `PageObjects`. The checker picks a file's rules by its folder, so a misnamed folder silently escapes them.
 - **Layers are created on first need.** Never scaffold empty folders. When the first test of a new kind arrives, create its canonical folder; don't park a DB class in `Apis/` because that folder exists.
 - **Tests orchestrate; they never implement.** A test reads as a sequence of business calls. If it needs a locator, an HTTP call, a loop or an `if`, push that work down a layer. HTTP belongs to an `<Domain>Api` class. `[no-http-in-test]`

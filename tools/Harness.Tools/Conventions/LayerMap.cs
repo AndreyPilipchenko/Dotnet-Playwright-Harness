@@ -53,6 +53,16 @@ internal static class LayerMap
         }
     }
 
+    /// <summary>
+    /// The folder a test sits in under <c>tests/&lt;Name&gt;.Tests/</c>: <c>Ui</c>, <c>Api</c>, <c>Setup</c>
+    /// or another name. Null for a path that is not under a tests project folder.
+    /// </summary>
+    public static string? TestFolder(string relativePath)
+    {
+        var parts = relativePath.Replace('\\', '/').Split('/');
+        return parts.Length > 3 && parts[0] == "tests" ? parts[2] : null;
+    }
+
     public static bool IsBuildOutput(string relativePath) =>
         relativePath.Replace('\\', '/').Split('/').Any(p => p is "bin" or "obj");
 

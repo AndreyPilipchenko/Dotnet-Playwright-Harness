@@ -147,6 +147,7 @@ public class OrdersTests : UiTest
 - Skips of any kind: `Ignore`, `Explicit`, `Skip =`, commented-out tests. `[no-skipped-test]` A test that can't run in an environment is a CI category choice, not a skip.
 - Extension classes or helper methods. Shared steps go down a layer. `[extension-placement]`
 - Attributes from a second test framework. `[mixed-test-frameworks]`
+- A base that doesn't match its folder: `UiTest` or an adapter browser base in `Api/`, `ApiTest` or `PlaywrightTest` in `Ui/`. `[test-base-class]`
 
 ## 6. Splitting
 
