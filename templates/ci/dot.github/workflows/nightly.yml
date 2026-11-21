@@ -16,22 +16,30 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # One job per browser chosen when the workflows were generated; one failing doesn't cancel the others.
   regression:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [{{Browsers}}]
+    name: regression (${{ matrix.browser }})
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
       BASE_URL: ${{ vars.BASE_URL }}
       API_URL: ${{ vars.API_URL }}
-      BROWSER: chromium
+      BROWSER: ${{ matrix.browser }}
     steps:
       - uses: actions/checkout@v7
 
       - uses: ./.github/actions/setup-harness
+        with:
+          browser: ${{ matrix.browser }}
 
       - uses: ./.github/actions/run-tests
         with:
-          label: regression
-          heading: Nightly tests
+          label: regression-${{ matrix.browser }}
+          heading: Nightly tests (${{ matrix.browser }})
 
   # Outdated packages are news, not a broken build, so this step can't fail the run.
   packages:
@@ -64,17 +72,25 @@ jobs:
         with:
           browser: none
 
+      # Each browser's results land in their own folder, artifacts/results-regression-<browser>.
       - name: Download the results
         uses: actions/download-artifact@v8
         with:
-          name: results-regression
-          path: artifacts/regression
+          pattern: results-regression-*
+          path: artifacts
+          merge-multiple: false
 
-      # Exit 2 from the tracker means the project has no QA records yet.
+      # One dashboard run per chosen browser, side by side. A browser whose job uploaded nothing is
+      # still listed, as "No results from". The tracker reads them all: a case that failed on any
+      # browser counts as failed. Exit 2 from the tracker means the project has no QA records yet.
       - name: Build the reports
         run: |
-          dotnet .harness/tools/bin/Harness.Tools.dll dashboard --run regression=artifacts/regression --out site/index.html
-          dotnet .harness/tools/bin/Harness.Tools.dll tracker --results artifacts/regression --out site/tracker.html || [ $? -eq 2 ]
+          runs=()
+          for browser in {{BrowserWords}}; do
+            runs+=(--run "regression-$browser=artifacts/results-regression-$browser")
+          done
+          dotnet .harness/tools/bin/Harness.Tools.dll dashboard "${runs[@]}" --out site/index.html
+          dotnet .harness/tools/bin/Harness.Tools.dll tracker --results artifacts --out site/tracker.html || [ $? -eq 2 ]
 
       - name: Check the reports for secrets
         run: dotnet .harness/tools/bin/Harness.Tools.dll secret-scan --path site

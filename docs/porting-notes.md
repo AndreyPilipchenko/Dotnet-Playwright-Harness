@@ -39,4 +39,3 @@ The original plan listed these, and they don't exist in the harness today:
 - Path-scoped rules under `.claude/rules/`. The conventions live in skills and in `check-conventions`.
 - A browser diagnostics helper. Traces of failed tests cover part of it. Signing in once per role is built: see `Setup/Roles.cs` in the skeleton and the utility-classes skill.
 - Saved Claude Code workflows. The tool wasn't available when vetted, so the main session drives the loops.
-- Firefox and WebKit in CI, because they aren't verified.

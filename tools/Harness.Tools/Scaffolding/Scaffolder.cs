@@ -15,6 +15,9 @@ internal sealed record ScaffoldOptions(
     /// Lets an installed project add a file that a newer harness introduced.
     /// </summary>
     public string? Only { get; init; }
+
+    /// <summary>The browsers the nightly CI run covers, in the user's order; the first also runs smoke. Null means Chromium only.</summary>
+    public IReadOnlyList<string>? Browsers { get; init; }
 }
 
 /// <summary>A problem the user or the template author must fix. Nothing was written.</summary>
@@ -31,6 +34,32 @@ internal sealed class ScaffoldException(string message) : Exception(message);
 internal static partial class Scaffolder
 {
     public static readonly IReadOnlyList<string> Frameworks = ["nunit", "xunit", "mstest"];
+
+    /// <summary>The browsers verified on every framework, on Windows and Linux (docs/framework-matrix.md).</summary>
+    public static readonly IReadOnlyList<string> Browsers = ["chromium", "firefox", "webkit"];
+
+    /// <summary>Parses a comma-separated browser list: trimmed, lower-cased, order kept; at least one, no repeats.</summary>
+    public static IReadOnlyList<string> ParseBrowsers(string list)
+    {
+        var allowed = string.Join(", ", Browsers);
+        var names = list.Split(',').Select(b => b.Trim().ToLowerInvariant()).ToList();
+        if (names.Any(n => n.Length == 0))
+        {
+            throw new ScaffoldException($"'{list}' has an empty browser name. List one or more of: {allowed}, separated by commas.");
+        }
+
+        if (names.FirstOrDefault(n => !Browsers.Contains(n)) is { } unknown)
+        {
+            throw new ScaffoldException($"Unknown browser '{unknown}'. Use one or more of: {allowed}.");
+        }
+
+        if (names.GroupBy(n => n).FirstOrDefault(g => g.Count() > 1) is { } repeated)
+        {
+            throw new ScaffoldException($"'{repeated.Key}' is listed twice. List each of {allowed} at most once.");
+        }
+
+        return names;
+    }
 
     private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
 
@@ -96,6 +125,7 @@ internal static partial class Scaffolder
     {
         var framework = Validate(options.Framework, options.Name, options.TargetFramework);
         var xunit = framework == "xunit";
+        var browsers = options.Browsers ?? ["chromium"];
 
         var tokens = new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -104,6 +134,9 @@ internal static partial class Scaffolder
             ["Framework"] = framework,
             ["FilterOption"] = xunit ? "--filter-trait" : "--filter",
             ["SmokeFilter"] = xunit ? "Category=smoke" : "TestCategory=smoke",
+            ["Browsers"] = string.Join(", ", browsers),
+            ["BrowserWords"] = string.Join(' ', browsers),
+            ["SmokeBrowser"] = browsers[0],
         };
 
         return Write(Render(options.TemplatesDirectory, ["ci"], tokens), options.OutputDirectory);

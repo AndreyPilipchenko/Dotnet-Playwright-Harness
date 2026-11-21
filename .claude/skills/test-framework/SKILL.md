@@ -42,4 +42,4 @@ dotnet test --project tests/<Name>.Tests/<Name>.Tests.csproj --report-trx --resu
 
 - **Exit codes:** 0 = passed, **2 = test failures**, **5 = invalid command line**. A 5 means fix the command, not the test.
 - **Browser:** the `BROWSER` environment variable (`chromium`, `firefox`, `webkit`) and `HEADED`. Context options (base URL, viewport, locale) are set in code in `tests/<Name>.Tests/Setup/UiTest.cs`.
-- After a build or a Playwright update, install the browser once: `tests/<Name>.Tests/bin/Debug/<tfm>/playwright.ps1 install chromium`.
+- After a build or a Playwright update, install the browser once: `tests/<Name>.Tests/bin/Debug/<tfm>/playwright.ps1 install chromium` (or `firefox`, `webkit`). On Linux add `--with-deps`.

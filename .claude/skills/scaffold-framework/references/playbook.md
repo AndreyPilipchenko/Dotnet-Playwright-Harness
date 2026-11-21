@@ -37,6 +37,7 @@ dotnet .harness/tools/bin/Harness.Tools.dll check-conventions
 ```
 
 - On Windows PowerShell 5.1, run the install script as `powershell -NoProfile -File tests/<Name>.Tests/bin/Debug/<tfm>/playwright.ps1 install chromium`. Its `pwsh` shebang doesn't matter then.
+- To run on Firefox or WebKit too, install them the same way (`install firefox webkit`) and set `BROWSER`. On Linux add `--with-deps`. All three are verified for the skeleton.
 - The build must show **0 warnings**: they are errors. Don't change build settings to get past one (csharp-standards).
 - Expect `total: 1`, `succeeded: 1`, exit code 0, and one `.trx` file under `TestResults/`.
 

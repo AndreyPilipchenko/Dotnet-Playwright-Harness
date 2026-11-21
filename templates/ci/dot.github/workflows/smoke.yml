@@ -22,11 +22,13 @@ jobs:
     env:
       BASE_URL: ${{ vars.BASE_URL }}
       API_URL: ${{ vars.API_URL }}
-      BROWSER: chromium
+      BROWSER: {{SmokeBrowser}}
     steps:
       - uses: actions/checkout@v7
 
       - uses: ./.github/actions/setup-harness
+        with:
+          browser: {{SmokeBrowser}}
 
       - uses: ./.github/actions/run-tests
         with:
