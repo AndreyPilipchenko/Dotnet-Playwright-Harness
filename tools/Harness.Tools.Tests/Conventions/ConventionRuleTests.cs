@@ -239,6 +239,8 @@ public class ConventionRuleTests
     [InlineData("""{ "user": { "password": "Pa55word!" } }""", 1)]
     [InlineData("{\n  \"email\": \"a@b.test\",\n  \"accessToken\": \"abc\"\n}", 3)]
     [InlineData("""[ { "API_KEY": "k1" } ]""", 1)]
+    [InlineData("""{ "password": ["Pa55word!"] }""", 1)]
+    [InlineData("{\n  \"token\": { \"value\": \"abc1\" }\n}", 2)]
     public void SecretInTestData_ASecretNamedFieldWithAValue_IsRejected_WithoutShowingIt(string json, int line)
     {
         using var host = new ConventionHost().Write(PagePath, "class LoginPage { }").Write("resources/testData/LoginTestData.json", json);
@@ -266,11 +268,63 @@ public class ConventionRuleTests
     [InlineData("""{ "wrongPassword": "not-it", "passwordHint": "pets", "token_type": "bearer" }""")]
     [InlineData("""{ "password": null, "token": 42 }""")]
     [InlineData("{ broken")]
+    [InlineData("""{ "password": [] }""")]
+    [InlineData("""{ "token": {} }""")]
+    [InlineData("""{ "secret": [1, true, null] }""")]
     public void SecretInTestData_EmptyOrHonestlyNamedValues_AreFine(string json)
     {
         using var host = new ConventionHost().Write(PagePath, "class LoginPage { }").Write("resources/testData/LoginTestData.json", json);
 
         Assert.DoesNotContain(host.Check().Findings, f => f.Rule == "secret-in-test-data");
+    }
+
+    [Theory]
+    [InlineData("public static class Secrets\n{\n    public static string Get(string name)\n    {\n        var value = Read(name);\n        // Redaction.Remember(value);\n        return value;\n    }\n}", 1)]
+    [InlineData("using static Acme.Framework.Utils.Redaction;\n\npublic static class Secrets\n{\n    public static string Get(string name)\n    {\n        var value = Read(name);\n        Remember(value);\n        return value;\n    }\n}", 0)]
+    [InlineData("public static class Secrets\n{\n    public static string Get(string name)\n    {\n        var value = Read(name);\n        Utils.Redaction.Remember(value);\n        return value;\n    }\n}", 0)]
+    // Review findings: a global using static, a using inside a namespace block, an alias and a method group are real calls too.
+    [InlineData("public static class Secrets\n{\n    public static string Get(string name)\n    {\n        var value = Read(name);\n        Remember(value);\n        return value;\n    }\n}", 0)]
+    [InlineData("namespace Acme.Framework.Utils\n{\n    using static Acme.Framework.Utils.Redaction;\n\n    public static class Secrets\n    {\n        public static string Get(string name) { var v = Read(name); Remember(v); return v; }\n    }\n}", 0)]
+    [InlineData("using R = Acme.Framework.Utils.Redaction;\n\npublic static class Secrets\n{\n    public static string Get(string name) { var v = Read(name); R.Remember(v); return v; }\n}", 0)]
+    [InlineData("public static class Secrets\n{\n    public static string[] GetAll(string[] names) { var v = names.Select(Read).ToArray(); Array.ForEach(v, Redaction.Remember); return v; }\n}", 0)]
+    [InlineData("public static class Secrets\n{\n    public static string Get(string name) { var v = Read(name); Remember(v); return v; }\n\n    private static void Remember(string value) { }\n}", 1)]
+    public void SecretsRemembered_LooksForARealCall(string source, int findings)
+    {
+        using var host = new ConventionHost().Write(SecretsPath, source);
+
+        Assert.Equal(findings, host.FindingsFor(SecretsPath).Count(f => f.Rule == "secrets-remembered"));
+    }
+
+    [Theory]
+    [InlineData("Redaction.Remember(value);", 0)]
+    [InlineData("Keep(value);", 1)]
+    public void SecretsRemembered_APartialSecrets_CountsItsOtherParts(string siblingCall, int findings)
+    {
+        using var host = new ConventionHost()
+            .Write(SecretsPath, "public static partial class Secrets\n{\n    public static string Get(string name) => Keep(Read(name));\n}")
+            .Write("src/Acme.Framework/Utils/Secrets.Remember.cs", "public static partial class Secrets\n{\n    private static string Keep(string value)\n    {\n        " + siblingCall + "\n        return value;\n    }\n}");
+
+        Assert.Equal(findings, host.FindingsFor(SecretsPath).Count(f => f.Rule == "secrets-remembered"));
+    }
+
+    [Fact]
+    public void SecretsRemembered_ALockedFileBesideAPartialSecrets_DoesNotStopTheCheck()
+    {
+        // Review finding: an unreadable sibling made check-conventions crash with a stack trace.
+        using var host = new ConventionHost()
+            .Write(SecretsPath, "public static partial class Secrets\n{\n    public static string Get(string name) => Read(name);\n}")
+            .Write("src/Acme.Framework/Utils/Locked.cs", "public static class Locked { }");
+        using var locked = new FileStream(Path.Combine(host.Root.Path, "src", "Acme.Framework", "Utils", "Locked.cs"), FileMode.Open, FileAccess.Read, FileShare.None);
+
+        Assert.Single(host.FindingsFor(SecretsPath), f => f.Rule == "secrets-remembered");
+    }
+
+    [Fact]
+    public void SecretInTestData_ANestedSecretInsideAFlaggedObject_IsOneFinding()
+    {
+        using var host = new ConventionHost().Write(PagePath, "class LoginPage { }").Write("resources/testData/LoginTestData.json", """{ "secret": { "password": "x1" } }""");
+
+        Assert.Single(host.Check().Findings, f => f.Rule == "secret-in-test-data");
     }
 
     [Fact]

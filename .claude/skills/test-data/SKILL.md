@@ -74,6 +74,9 @@ await checkout.SignInAndOpenOrdersAsync(Data.User.Email, Secrets.Get("SHOP_PASSW
 
 - **Never** put a real credential, token or key in JSON or source. `[secret-literal]` The account named in JSON must be a disposable test account.
 - A JSON field named like a secret (`password`, `token`, `apiKey`, `accessToken`…) must not hold a value. Give a made-up value for a negative test an honest name: `wrongPassword`, `expiredToken`. `[secret-in-test-data]`
+  - This includes values inside an array or object under that field.
+  - Data rows for password-rule cases name the field for what it holds: `candidatePassword`, `tooShortPassword`.
+  - The rule can't be exempted or baselined.
 - **A password or token the test generates or receives** (a unique password, a token from an Api sign-in) goes through `Redaction.Remember(value)` as soon as it exists, so traces and browser diagnostics mask it. Values from `Secrets.Get` are remembered already. A value typed into a `type="password"` field is masked in traces even if no one remembered it, but the same value in a text field, a URL or a log line is not.
 - **Unique per test and per run:** anything a test creates gets a generated value, so parallel and repeated runs never collide.
 
