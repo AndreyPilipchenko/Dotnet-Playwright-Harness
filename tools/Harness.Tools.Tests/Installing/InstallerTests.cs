@@ -242,6 +242,7 @@ public class InstallerTests
 
         Assert.Equal(ExitCodes.Ok, code);
         Assert.Contains("settings.json", io.Out.ToString(), StringComparison.Ordinal);
+        Assert.Contains("CLAUDE.md: created", io.Out.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]

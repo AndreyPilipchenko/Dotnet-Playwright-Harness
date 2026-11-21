@@ -12,13 +12,14 @@ namespace Harness.Tools.Installing;
 /// <param name="SettingsTemplate">The harness hook and permission block (templates/settings.harness.json).</param>
 internal sealed record InstallOptions(string Root, string? Framework, string? Name, string? TargetFramework, string SettingsTemplate);
 
-internal sealed record InstallResult(string ProjectJson, string Settings, int HarnessHandlers, int UserHandlers);
+internal sealed record InstallResult(string ProjectJson, string Settings, int HarnessHandlers, int UserHandlers, ClaudeMdChange ClaudeMd);
 
 internal sealed class InstallException(string message) : Exception(message);
 
 /// <summary>
-/// Records the project settings in <c>.harness/project.json</c> and merges the harness hooks and
-/// deny rules into <c>.claude/settings.json</c>. Safe to re-run: harness-owned hook handlers (those
+/// Records the project settings in <c>.harness/project.json</c>, merges the harness hooks and
+/// deny rules into <c>.claude/settings.json</c>, and makes the root <c>CLAUDE.md</c> import the
+/// harness instructions (<see cref="ClaudeMd"/>). Safe to re-run: harness-owned hook handlers (those
 /// that run Harness.Tools.dll) are replaced, everything else is kept, and nothing is written when an
 /// input is invalid.
 /// </summary>
@@ -71,8 +72,9 @@ internal static partial class Installer
         Write(projectPath, project.ToJsonString(Indented));
         Write(settingsPath, settings.ToJsonString(Indented));
         UpdateGitignore(Path.Combine(root, ".harness", ".gitignore"));
+        var claudeMd = ClaudeMd.Ensure(Path.Combine(root, "CLAUDE.md"));
 
-        return new InstallResult(projectPath, settingsPath, CountHandlers(template), userHandlers);
+        return new InstallResult(projectPath, settingsPath, CountHandlers(template), userHandlers, claudeMd);
     }
 
     /// <summary>A valid dotted C# name from a folder name: <c>my-shop.e2e</c> becomes <c>MyShop.E2e</c>.</summary>

@@ -31,6 +31,14 @@ function Invoke-Script([string]$Path, [string[]]$Arguments) {
     return @{ Code = $LASTEXITCODE; Output = $output }
 }
 
+function Test-ClaudeMdImport([string]$Project) {
+    # The root CLAUDE.md imports the harness instructions exactly once, and the imported file exists.
+    $path = Join-Path $Project 'CLAUDE.md'
+    if (-not (Test-Path -LiteralPath $path)) { return $false }
+    $lines = @([IO.File]::ReadAllLines($path) | Where-Object { $_.Trim() -eq '@.harness/templates/CLAUDE.harness.md' })
+    return ($lines.Count -eq 1) -and (Test-Path (Join-Path $Project '.harness\templates\CLAUDE.harness.md'))
+}
+
 function Read-Json([string]$Path) { return [IO.File]::ReadAllText($Path) | ConvertFrom-Json }
 
 function Get-HarnessHandlerCount([string]$SettingsPath) {
@@ -81,6 +89,8 @@ try {
     $manifest = [IO.File]::ReadAllText((Join-Path $project '.harness\manifest.json'))
     Check 'writes the manifest, without build output' ($manifest -match 'Harness.Tools.csproj' -and $manifest -notmatch '/(bin|obj)/')
     $firstSettings = [IO.File]::ReadAllText($settings)
+    Check 'CLAUDE.md imports the harness once' (Test-ClaudeMdImport $project)
+    $firstClaudeMd = [IO.File]::ReadAllText((Join-Path $project 'CLAUDE.md'))
 
     Write-Host 'Re-run is a no-op'
     $r = Invoke-Script $setup @('-Target', $project)
@@ -110,6 +120,8 @@ try {
     Check 'takes unchanged files from the harness' ($globalJson -eq [IO.File]::ReadAllText((Join-Path $harness 'templates\build\global.json')).Replace("`r", ''))
     Check 'keeps user settings' ((Read-Json $settings).model -eq 'opus')
     Check 'still 8 harness hooks' ((Get-HarnessHandlerCount $settings) -eq 8)
+    Check 'CLAUDE.md still imports the harness once' (Test-ClaudeMdImport $project)
+    Check 'CLAUDE.md unchanged' ([IO.File]::ReadAllText((Join-Path $project 'CLAUDE.md')) -eq $firstClaudeMd)
 
     Write-Host 'A clone rebuilds from the committed source'
     Remove-Item -Recurse -Force (Join-Path $project '.harness\tools\bin')

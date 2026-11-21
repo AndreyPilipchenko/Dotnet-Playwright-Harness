@@ -30,7 +30,7 @@ You need the .NET SDK 10 and PowerShell (Windows PowerShell 5.1 or PowerShell 7)
 scripts/setup.ps1 -Target C:\src\shop-tests -Framework nunit -Name Acme.Shop
 ```
 
-The script copies the payload, builds the tool, and merges the harness hooks into the project's `.claude/settings.json`. Use `scripts/update.ps1` to refresh the harness later. Files you changed locally are never overwritten.
+The script copies the payload, builds the tool, and merges the harness hooks into the project's `.claude/settings.json`. It also adds one line, `@.harness/templates/CLAUDE.harness.md`, to the project's `CLAUDE.md`, so Claude Code reads the harness's standing instructions even before the hooks are built. Use `scripts/update.ps1` to refresh the harness later. Files you changed locally are never overwritten.
 
 Then start Claude Code in that project and ask for what you want, for example "create the framework for https://your-app.example". After cloning a project that already has the harness, run `.harness/setup.ps1`. Until then the hooks guard nothing.
 
