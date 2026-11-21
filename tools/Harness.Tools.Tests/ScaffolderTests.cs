@@ -99,7 +99,9 @@ public class ScaffolderTests
              // Review findings: whole-value matches only, and a masked JSON line that no longer parses fails the masking.
              "(?<![\\w-])", "Masking broke the JSON of",
              // Review follow-ups: a scanner finds where a field's value ends, and the zip is read one entry at a time.
-             "EndOfValue(", "RememberPasswordFields(ReadText("],
+             "EndOfValue(", "RememberPasswordFields(ReadText(",
+             // Masking hardening: pass 1 reads only the entries that hold DOM snapshots.
+             "EndsWith(\".trace\", StringComparison.Ordinal)))"],
             s => Assert.Contains(s, text, StringComparison.Ordinal));
         Assert.All(["Console.", ".Result", ".Wait()"], s => Assert.DoesNotContain(s, text, StringComparison.Ordinal));
     }

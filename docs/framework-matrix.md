@@ -385,6 +385,7 @@ The probe was a failing test on each framework's skeleton (`UiTest` with `TRACE_
 
   Every masked `trace.trace` and `trace.network` line still parsed, so no trace was deleted.
 - **Not verified:** Firefox and WebKit, and a context that crashed before teardown. The `finally` is reasoned, not run.
+- **Where the typed value lives (2026-11-21, NUnit skeleton, Chromium):** a failed probe filled a `type=password` field and a text field, then failed, with `TRACE_DIR` set. In the saved zip, `__playwright_value_` appeared only in `trace.trace` (9 times). It was absent from `trace.network`, `trace.stacks` and `screencast/*.jpeg`, and the probe's password was in no entry after masking. So `MaskZip`'s first pass, which remembers typed passwords, reads only `*.trace` entries.
 
 ## GitHub Actions (checked 2026-11-08)
 

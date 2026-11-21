@@ -68,7 +68,8 @@ public static partial class Redaction
         foreach (Match field in JsonField().Matches(text))
         {
             var start = field.Index + field.Length;
-            if (field.Index < copied || EndOfValue(text, start, field.Groups["esc"].Length) is not (>= 0 and var end))
+            // A field that starts inside an earlier masked value still masks its own value.
+            if (start < copied || EndOfValue(text, start, field.Groups["esc"].Length) is not (>= 0 and var end))
             {
                 continue;
             }
@@ -81,8 +82,12 @@ public static partial class Redaction
     }
 
     // A string nested n levels deep in JSON strings opens and closes with a quote after 0, 1, 3 or 7
-    // backslashes. Inside it, a quote closes the value only when the backslashes before it number
-    // r ≡ n (mod 2(n+1)); any other quote is part of the value. Returns -1 when no end is found.
+    // backslashes, and a literal backslash in it is n+1 backslashes. So a quote after r backslashes is
+    // part of the value when r ≡ 2n+1 (mod 2(n+1)), a quote nested deeper. Any other quote ends it:
+    // this value's closing quote when r ≡ n, or a shallower string's when the value was never closed.
+    // The value then ends after the literal backslashes, leaving the quote's own r mod (n+1). A raw
+    // newline or the end of the text ends it too, so a broken value is masked, never shown.
+    // Returns -1 only when n is not a nesting level.
     private static int EndOfValue(string text, int start, int n)
     {
         if ((n & (n + 1)) != 0)
@@ -94,7 +99,7 @@ public static partial class Redaction
         {
             if (text[i] == '\n')
             {
-                return -1;
+                return i > start && text[i - 1] == '\r' ? i - 1 : i;
             }
 
             if (text[i] != '\\' && text[i] != '"')
@@ -108,17 +113,9 @@ public static partial class Redaction
                 run++;
             }
 
-            if (i + run < text.Length && text[i + run] == '"')
+            if (i + run < text.Length && text[i + run] == '"' && run % (2 * (n + 1)) != (2 * n) + 1)
             {
-                if (run % (2 * (n + 1)) == n)
-                {
-                    return i + run - n;
-                }
-
-                if (run == 0)
-                {
-                    return -1;
-                }
+                return i + run - (run % (n + 1));
             }
 
             i += Math.Max(run, 1) - 1;
@@ -128,7 +125,7 @@ public static partial class Redaction
             }
         }
 
-        return -1;
+        return text.Length;
     }
 
     /// <summary>
@@ -146,8 +143,9 @@ public static partial class Redaction
             using (var target = ZipFile.Open(temp, ZipArchiveMode.Create))
             {
                 // A value typed into a password field is a secret however the test got it, so it is
-                // remembered before anything is masked, and then hidden in every entry.
-                foreach (var entry in source.Entries)
+                // remembered before anything is masked, and then hidden in every entry. DOM snapshots
+                // live only in *.trace entries, so screenshots and resources are not read twice.
+                foreach (var entry in source.Entries.Where(e => e.FullName.EndsWith(".trace", StringComparison.Ordinal)))
                 {
                     RememberPasswordFields(ReadText(entry) ?? string.Empty);
                 }
@@ -285,7 +283,10 @@ public static partial class Redaction
     private static partial Regex Jwt();
 
     // Up to the opening quote of a secret-named field's value; esc is the backslashes before each quote.
-    [GeneratedRegex(@"(?<esc>\\*)""(?:" + SecretNames + @")\k<esc>""\s*:\s*\k<esc>""", RegexOptions.IgnoreCase)]
+    // esc is capped at 15 backslashes (four levels deep), so each position tries at most 16 and a long
+    // run of backslashes stays linear. Any shorter tail of a longer run is still tried, so a nested field
+    // after literal backslashes (C:\\\"password\":\"…) is found.
+    [GeneratedRegex(@"(?<esc>\\{0,15})""(?:" + SecretNames + @")\k<esc>""\s*:\s*\k<esc>""", RegexOptions.IgnoreCase)]
     private static partial Regex JsonField();
 
     // ?api_key=… in URLs, and password=… in form bodies.
