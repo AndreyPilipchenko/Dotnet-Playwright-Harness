@@ -210,8 +210,8 @@ The test-framework skill has the full attribute mapping.
 5. **Externalized data.** Test inputs and expected values come from the test class's own JSON, loaded with `TestData.Load<T>("<Feature>")`. `[test-data-source]`
    - Business classes take them as parameters and never load test data. `[no-test-data-in-business-layer]`
    - A page's own `Url` constant is structure, not data.
-   - Externally provisioned credentials and API keys come from environment variables or user-secrets, never from source or JSON. `[secret-literal]`
-   - Fixed synthetic values, including deliberately invalid passwords, belong in the JSON.
+   - Externally provisioned credentials and API keys come from environment variables or user-secrets, never from source or JSON. `[secret-literal]` Read them through `Secrets.Get`, which hands each value to `Redaction` so traces and browser diagnostics mask it. `[secrets-remembered]`
+   - Fixed synthetic values, including deliberately invalid passwords, belong in the JSON, named for what they are (`wrongPassword`, not `password`). A field named like a secret that holds a value is flagged. `[secret-in-test-data]`
 6. **Actions act; validations verify.**
    - Every assertion lives in a `Verify*` method on a business class, using web-first `Assertions.Expect`. `[no-assertion-in-test]` `[action-verify-separation]`
    - A value with no web-first form, such as a database count, is compared with `Checks.Equal(expected, actual, what)` from Utils. It throws `CheckFailedException`, which every test framework reports as a failure. The framework project never references a test framework's `Assert`.

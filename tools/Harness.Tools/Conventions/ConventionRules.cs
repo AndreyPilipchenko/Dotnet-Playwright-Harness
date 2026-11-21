@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Harness.Tools.Hooks;
 using Microsoft.CodeAnalysis;
@@ -119,6 +120,12 @@ internal static partial class ConventionRules
         new("secret-literal", Severity.Fail,
             "Secrets come from environment variables or user-secrets, never from source.",
             AnyLayer, SecretLiteral, Exemptable: false, Baselinable: false),
+        new("secrets-remembered", Severity.Fail,
+            "Utils/Secrets hands out credentials, so it calls Redaction.Remember(value) on each one; otherwise traces and browser diagnostics can't mask them. A project made before Redaction existed adds it with scaffold --only Utils/Redaction.cs.",
+            UtilsOnly, SecretsRemembered),
+        new("secret-in-test-data", Severity.Fail,
+            "A test data field named like a secret (password, token, api_key…) holds a value. Read real credentials with Secrets.Get, which masks them; name a made-up value for what it is, such as wrongPassword.",
+            [], File: null, Repository: SecretInTestData, Exemptable: false, Baselinable: false),
         new("test-data-pairing", Severity.Fail,
             "Each test class has its data in resources/testData/<Feature>TestData.json.",
             TestsOnly, TestDataPairing),
@@ -293,6 +300,19 @@ internal static partial class ConventionRules
 
     private static IEnumerable<RuleHit> SecretLiteral(SourceFile f, RuleContext _) =>
         SecretScanner.Scan(f.Text).Select(s => new RuleHit(s.Line, "[redacted]", s.HighConfidence ? Severity.Fail : Severity.Warn));
+
+    private static IEnumerable<RuleHit> SecretsRemembered(SourceFile f, RuleContext _)
+    {
+        if (!Path.GetFileName(f.RelativePath).Equals("Secrets.cs", StringComparison.Ordinal)
+            || f.Text.Contains("Redaction.Remember(", StringComparison.Ordinal))
+        {
+            return [];
+        }
+
+        return f.Nodes<ClassDeclarationSyntax>()
+            .Where(c => c.Identifier.Text == "Secrets")
+            .Select(c => new RuleHit(LineOf(c.Identifier)));
+    }
 
     private static IEnumerable<RuleHit> TestDataPairing(SourceFile f, RuleContext context)
     {
@@ -497,6 +517,59 @@ internal static partial class ConventionRules
     }
 
     // ── repository checks ────────────────────────────────────────────────
+
+    // Compared without case, '_' or '-', so accessToken, ACCESS_TOKEN and access-token all match.
+    private static readonly HashSet<string> SecretFieldNames =
+        [.. Reports.ReportSecrets.SecretNames.Split('|').Select(NormalizeFieldName)];
+
+    private static string NormalizeFieldName(string name) =>
+        name.Replace("_", string.Empty, StringComparison.Ordinal).Replace("-", string.Empty, StringComparison.Ordinal).ToLowerInvariant();
+
+    private static List<Finding> SecretInTestData(ConventionRule rule, RuleContext context)
+    {
+        var findings = new List<Finding>();
+        var folder = Path.Combine(context.Root, "resources", "testData");
+        if (!Directory.Exists(folder))
+        {
+            return findings;
+        }
+
+        foreach (var file in Directory.EnumerateFiles(folder, "*.json", SearchOption.AllDirectories).Order(StringComparer.Ordinal))
+        {
+            var relative = Path.GetRelativePath(context.Root, file).Replace('\\', '/');
+            // Utf8JsonReader rejects a byte order mark, which Windows PowerShell 5.1 and some editors write.
+            var bytes = System.IO.File.ReadAllBytes(file);
+            if (bytes.AsSpan().StartsWith((ReadOnlySpan<byte>)[0xEF, 0xBB, 0xBF]))
+            {
+                bytes = bytes[3..];
+            }
+
+            try
+            {
+                var reader = new Utf8JsonReader(bytes, new JsonReaderOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
+                while (reader.Read())
+                {
+                    if (reader.TokenType != JsonTokenType.PropertyName || !SecretFieldNames.Contains(NormalizeFieldName(reader.GetString()!)))
+                    {
+                        continue;
+                    }
+
+                    var name = reader.GetString()!;
+                    var line = 1 + bytes.AsSpan(0, (int)reader.TokenStartIndex).Count((byte)'\n');
+                    if (reader.Read() && reader.TokenType == JsonTokenType.String && reader.ValueSpan.Length > 0)
+                    {
+                        findings.Add(new Finding(rule.Id, rule.Severity, relative, line, rule.Why, $"\"{name}\": [redacted]"));
+                    }
+                }
+            }
+            catch (JsonException)
+            {
+                // A file that isn't JSON fails when the tests load it; this rule only looks for values.
+            }
+        }
+
+        return findings;
+    }
 
     private static IEnumerable<Finding> TestDataFolder(ConventionRule rule, RuleContext context)
     {

@@ -18,6 +18,9 @@ public class ScaffolderTests
         "src/Acme.Shop.Framework/Pages/GreetingPage.cs",
         "src/Acme.Shop.Framework/Utils/TestData.cs",
         "src/Acme.Shop.Framework/Utils/SignedInSessions.cs",
+        "src/Acme.Shop.Framework/Utils/Secrets.cs",
+        "src/Acme.Shop.Framework/Utils/Redaction.cs",
+        "src/Acme.Shop.Framework/Utils/BrowserDiagnostics.cs",
         "resources/testData/GreetingTestData.json",
         "tests/Acme.Shop.Tests/Acme.Shop.Tests.csproj",
         "tests/Acme.Shop.Tests/Setup/UiTest.cs",
@@ -63,6 +66,92 @@ public class ScaffolderTests
             ["AppContext.BaseDirectory", "\".auth\"", "Guid.NewGuid()", "StorageStateAsync", "could not sign in at the start of the run", "ThroughApi", "ThroughLoginPage", "class SignedOutAttribute"],
             s => Assert.Contains(s, text, StringComparison.Ordinal));
         Assert.All([".Result", ".Wait()", "GetResult()"], s => Assert.DoesNotContain(s, text, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RealTemplates_Secrets_RemembersWhatItReturns()
+    {
+        using var dir = new TempDir();
+        Scaffolder.Run(Options("nunit", dir.Path));
+
+        var text = File.ReadAllText(dir.Combine("src/Acme.Shop.Framework/Utils/Secrets.cs"));
+
+        Assert.Contains("public static string Get(string name)", text, StringComparison.Ordinal);
+        Assert.Contains("Redaction.Remember(value)", text, StringComparison.Ordinal);
+        Assert.Contains("$\"Set the {name} environment variable.\"", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("Console.", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RealTemplates_Redaction_MasksTheSpikedForms()
+    {
+        // The forms recorded in docs/framework-matrix.md, "Browser diagnostics and masked traces".
+        using var dir = new TempDir();
+        Scaffolder.Run(Options("nunit", dir.Path));
+
+        var text = File.ReadAllText(dir.Combine("src/Acme.Shop.Framework/Utils/Redaction.cs"));
+
+        Assert.All(
+            ["public static void Remember(string value)", "public static string Mask(string text)", "public static void MaskZip(string path)",
+             "authorization|proxy-authorization|cookie|set-cookie|x-api-key", "access_token", "\"***\"", "eyJ", "\"cookies\"", "throwOnInvalidBytes: true",
+             // A value typed into a password field is masked even when no one remembered it (side-agent finding).
+             "__playwright_value_", "\"\"password\"\"", "RememberPasswordFields(text)",
+             // Review findings: whole-value matches only, and a masked JSON line that no longer parses fails the masking.
+             "(?<![\\w-])", "Masking broke the JSON of"],
+            s => Assert.Contains(s, text, StringComparison.Ordinal));
+        Assert.All(["Console.", ".Result", ".Wait()"], s => Assert.DoesNotContain(s, text, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RealTemplates_BrowserDiagnostics_IsCappedAndMasked()
+    {
+        using var dir = new TempDir();
+        Scaffolder.Run(Options("nunit", dir.Path));
+
+        var text = File.ReadAllText(dir.Combine("src/Acme.Shop.Framework/Utils/BrowserDiagnostics.cs"));
+
+        Assert.All(
+            ["public static BrowserDiagnostics Attach(IBrowserContext context)", "MaxLines = 50", "MaxLength = 300", "Redaction.Mask(",
+             "context.Console", "context.WebError", "context.RequestFailed", "context.Response", "\"warning\"", "Browser diagnostics (", "more"],
+            s => Assert.Contains(s, text, StringComparison.Ordinal));
+        Assert.All(["Console.Write", ".Result", ".Wait()"], s => Assert.DoesNotContain(s, text, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RealTemplates_TraceFiles_MasksOrRemovesTheTrace()
+    {
+        // An unmasked trace must never remain: if masking fails, the trace is deleted and the test output says so.
+        using var dir = new TempDir();
+        Scaffolder.Run(Options("nunit", dir.Path));
+
+        var text = File.ReadAllText(dir.Combine("src/Acme.Shop.Framework/Utils/TraceFiles.cs"));
+
+        Assert.All(
+            ["public static string? MaskOrRemove(string path)", "Redaction.MaskZip(path)", "File.Delete(path)", "Trace removed: it could not be masked (",
+             // Review finding: a failed delete must not escape teardown silently.
+             "was NOT masked and could NOT be deleted"],
+            s => Assert.Contains(s, text, StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("nunit", "TestContext.Out.WriteLine")]
+    [InlineData("xunit", "TestContext.Current.TestOutputHelper?.WriteLine")]
+    [InlineData("mstest", "TestContext.WriteLine")]
+    public void RealTemplates_UiTest_WritesDiagnosticsAndMasksTheTrace(string framework, string writer)
+    {
+        using var dir = new TempDir();
+        Scaffolder.Run(Options(framework, dir.Path));
+
+        var text = File.ReadAllText(dir.Combine("tests/Acme.Shop.Tests/Setup/UiTest.cs"));
+
+        Assert.All(
+            ["BrowserDiagnostics.Attach(Context)", ".Report()", "TraceFiles.MaskOrRemove(", writer],
+            s => Assert.Contains(s, text, StringComparison.Ordinal));
+
+        // Review finding: a crashed context throws from Tracing.StopAsync; the diagnostics are still written.
+        var finallyAt = text.IndexOf("finally", StringComparison.Ordinal);
+        Assert.True(finallyAt > text.IndexOf("Tracing.StopAsync", StringComparison.Ordinal) && finallyAt < text.IndexOf(".Report()", StringComparison.Ordinal), text);
+        Assert.DoesNotContain("static BrowserDiagnostics", text, StringComparison.Ordinal);
     }
 
     [Fact]

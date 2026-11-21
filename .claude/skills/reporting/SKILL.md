@@ -43,6 +43,32 @@ dotnet test --project tests/<Name>.Tests/<Name>.Tests.csproj --report-trx --resu
 
 Open one with `bin/<cfg>/<tfm>/playwright.ps1 show-trace <file>` in the test project's output folder.
 
+**Traces are masked as they are saved.** `UiTest` passes each trace to `TraceFiles.MaskOrRemove` right away. The `Redaction` class then rewrites every text entry, replacing these with `***`:
+- values read through `Secrets.Get` or passed to `Redaction.Remember`
+- anything typed into a `type="password"` field
+- `Authorization`, `Cookie`, `Set-Cookie` and `X-Api-Key` header values, and cookie values
+- bearer tokens and JWTs
+- JSON and query fields named like secrets
+
+The viewer still opens a masked trace. A trace that can't be masked is deleted, and the test output says `Trace removed: it could not be masked (…)`.
+
+**Masking can't reach two things:**
+- a secret the framework doesn't know, typed into an ordinary text field or shown as page text
+- **any text in the screenshots**
+
+## Browser diagnostics of failed tests
+
+A failed UI test's TRX holds what the browser said, under `<Output><StdOut>`. On MSTest it comes after a `TestContext Messages:` line.
+
+```
+Browser diagnostics (3):
+  console.error: Cannot read properties of undefined (reading 'id')
+  response 500: POST https://app.test/api/orders?token=***
+  requestfailed: GET https://cdn.test/app.js (net::ERR_NAME_NOT_RESOLVED)
+```
+
+It's always on, with no setting, and a passing test writes nothing. The block lists console errors and warnings, uncaught page errors, failed requests and responses with status 400 and above, from every page of the test's context. The lines are masked like traces, cut to 300 characters, and capped at 50. It comes from `Utils/BrowserDiagnostics`.
+
 ## Before anything is shared or published
 
 Run `secret-scan` on the folder. It reads HTML, TRX, Markdown, JSON, XML, text, logs and CSV, inside
@@ -52,6 +78,7 @@ base64 and zip files too, so a trace counts. It prints the file and the kind of 
 - **Never publish `.auth/` folders.** They sit under the test output folder (`bin/…/.auth/<run-id>/`), hold the saved sessions of the signed-in roles, and are deleted at the end of a run. Copy results from `TestResults/`, never from `bin/`.
 - **Text inside a screenshot or video goes unnoticed.** Don't publish those from a run that signs in with a real account.
 - A finding means the report doesn't leave the machine or the run. Remove the secret at its source; never print it to confirm it.
+- Masking traces when they're saved doesn't replace this check. `secret-scan` is still the gate before anything is published.
 
 The dashboard holds test names and counts only. TRX and traces hold error text and page content.
 

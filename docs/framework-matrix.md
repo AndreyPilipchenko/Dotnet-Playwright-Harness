@@ -310,6 +310,82 @@ stand-in app, a PowerShell `HttpListener` with a cookie session and a local-stor
 - `playwright.ps1 show-trace <file>` is listed in the CLI's help. The viewer itself was not opened.
 - A fake `ghp_` token placed in page content was found by `secret-scan` inside the trace zip (`<test>.zip!trace.trace: github-token`, exit 1).
 
+## Browser diagnostics and masked traces (spike 2026-11-21, Windows, Chromium, Microsoft.Playwright 1.64.1)
+
+The probe was a failing test on each framework's skeleton (`UiTest` with `TRACE_DIR`, `--report-trx`). Context routes served a fake app on `https://app.test/`:
+
+- a `console.error` and a `console.warn`
+- a thrown error
+- a 500 response and an aborted request
+- a password typed from an env var
+- a POST with `Authorization: Bearer …` and `?api_key=…`, answered with `Set-Cookie: sid=…` and a JSON `access_token` (JWT-shaped)
+- a follow-up request that sent the cookie
+
+**Test output in the TRX:** a line written during the test lands in `<UnitTestResult><Output><StdOut>`, next to `<ErrorInfo>`.
+
+| | Writer | `<StdOut>` |
+|---|---|---|
+| NUnit | `TestContext.Out.WriteLine` | the lines as written |
+| xUnit v3 | `TestContext.Current.TestOutputHelper?.WriteLine` | the lines as written |
+| MSTest | `TestContext.WriteLine` (the `PageTest` property) | preceded by a blank line and `TestContext Messages:` |
+
+**Context events** (`IBrowserContext`) all compile and fire, on pages the test opens through `Page`:
+
+| Event | Fired for |
+|---|---|
+| `Console` | `IConsoleMessage.Type` is `error` or `warning` (not `warn`). A failed load adds its own `console.error: Failed to load resource: …` |
+| `WebError` | `IWebError.Error` is the message plus its stack, over several lines |
+| `RequestFailed` | `Failure` is, for example, `net::ERR_FAILED` for an aborted route |
+| `Response` | Every response. Status 500 from a route fulfil is included |
+
+**Where secrets sit in a trace zip.** The entries are `trace.trace`, `trace.network`, `trace.stacks`, `resources/<sha1>.<ext>` and `screencast/*.jpeg`.
+
+- **The typed value:**
+  - `"method":"fill","params":{…,"value":"<value>"}`
+  - a log line `"message":"  fill(\"<value>\")"`
+  - the DOM snapshot attribute `"__playwright_value_":"<value>"`, even for `type="password"`
+- **Headers** are `{"name":"Authorization","value":"Bearer …"}` and `{"name":"Cookie","value":"sid=…"}`. Their case is as sent. They appear in `trace.network`, and in `trace.trace` for a route's fulfil params (`{"name":"set-cookie","value":"sid=…; Path=/"}`).
+- **Cookies:** `"cookies":[{"name":"sid","value":"…"}]` in `trace.network`.
+- **Query:** in the URL (`?api_key=…`) and as `"queryString":[{"name":"api_key","value":"…"}]`.
+- **Bodies:**
+  - request and response bodies are separate `resources/<sha1>.json` files (`{"password":"…"}`, `{"access_token":"…"}`)
+  - a fulfilled body also appears escaped in `trace.trace` (`\"access_token\":\"…\"`)
+  - page HTML and scripts are `resources/<sha1>.html`, which held `'Bearer …'` and `api_key=…`
+- **Rewriting the text entries masks them, and the viewer still works:**
+  - Replacing each secret with `***` in every non-JPEG entry left none of the 5 planted values.
+  - `playwright.ps1 show-trace --port <p> <zip>` served it, and a screenshot of the page showed every action, with `Fill "***"`. The snapshot rendered, and the Network (5), Console (5) and Errors (1) tabs were present.
+  - The viewer doesn't check that a resource still matches its sha1 name.
+  - `--port` also opens the viewer in a browser tab.
+- Screenshots (`screencast/*.jpeg`) are images, and they were left alone. The password field rendered as dots.
+
+**End to end with the skeleton's code** (`Secrets`, `Redaction`, `BrowserDiagnostics`, `TraceFiles.MaskOrRemove`, `UiTest`). On each framework the same probe ran with `TRACE_DIR` set. It read the password with `Environment.GetEnvironmentVariable`, not `Secrets.Get`, so nothing remembered it. A 500 request carried `?token=…`.
+
+| | NUnit | xUnit v3 | MSTest |
+|---|---|---|---|
+| Run | 2 tests, probe failed, exit 2 | same | same |
+| TRX `<StdOut>` | `Browser diagnostics (7):` and 7 lines | same | same, after `TestContext Messages:` |
+| Planted secrets left in the trace's text entries (5 planted) | 0 | 0 | 0 |
+| `secret-scan --path TestResults --forbid-env PROBE_PASSWORD` | exit 0 | exit 0 | exit 0 |
+
+- **The 7 lines:**
+  - `console.error: boom-console`
+  - `console.warning: warn-x`
+  - `pageerror: Error: boom-page at https://app.test/:5:26` (the stack, collapsed onto one line)
+  - `response 500: GET https://app.test/api/fail500?token=***`
+  - two `console.error: Failed to load resource: …` lines
+  - `requestfailed: GET https://app.test/api/abort (net::ERR_FAILED)`
+- **The password was masked although nothing remembered it.** `MaskZip` remembers values typed into `type="password"` fields, from the snapshot's `__playwright_value_`, before it masks.
+- **Control:** `secret-scan` on the unmasked spike trace exits 1, finding `bearer-token`, `env:PROBE_PASSWORD`, `jwt` and `secret-field`.
+- A corrupt zip passed to `TraceFiles.MaskOrRemove` was deleted, and it returned `Trace removed: it could not be masked (…)`.
+- The masked MSTest trace opened in `show-trace`. It showed `Fill "***"`, the snapshot, and the Network, Console and Errors tabs.
+- **Repeated after the review fixes** on fresh skeletons, with the same results on all three frameworks. The fixes were:
+  - remembered values masked as whole values only
+  - a masked JSON line that no longer parses fails the masking
+  - the diagnostics written in a `finally`
+
+  Every masked `trace.trace` and `trace.network` line still parsed, so no trace was deleted.
+- **Not verified:** Firefox and WebKit, and a context that crashed before teardown. The `finally` is reasoned, not run.
+
 ## GitHub Actions (checked 2026-11-08)
 
 Latest releases, read with `gh` from each repository. The templates pin the major version.
@@ -350,7 +426,7 @@ Each framework's skeleton was scaffolded, built with 0 warnings, and its greetin
 - **Nightly reports (Linux):**
   - `dashboard --run regression-chromium=… --run regression-firefox=… --run regression-webkit=…` exited 0, and the page names each run.
   - The `scaffold-ci` nightly loop builds one `--run regression-<browser>=artifacts/results-regression-<browser>` per chosen browser. A browser with no results folder is still passed, and the dashboard lists it under "No results from" (an existing behaviour of `dashboard`; it fails only when every run is empty).
-- The Linux container mirrors `ubuntu-latest`, but it isn't the runner. The repository's CI skeleton matrix (framework × browser) is the check on the runner itself.
+- **On the runner:** the repository's CI skeleton matrix passed on `ubuntu-latest` in run 44879879401 (2026-11-21, commit 48be1eb). That covers all 9 jobs, framework × browser, each scaffolded, built, installed with `--with-deps` and run.
 - **Not verified:** real navigation on Firefox and WebKit (the greeting test sets content), Windows `--with-deps`, macOS, and branded channels.
 
 ## Probe test and scratch copy (verified 2026-11-08)

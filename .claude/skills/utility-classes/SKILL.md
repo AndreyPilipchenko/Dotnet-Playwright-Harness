@@ -27,7 +27,9 @@ Helpers. Reading an environment variable, or polling until something is true, is
 | Class | Job | Verified example |
 |---|---|---|
 | `Utils/TestData` | Load `<Feature>TestData.json` (from the template) | `TestData.Load<OrdersTestData>("Orders")` |
-| `Utils/Secrets` | Read a credential from the environment; fail loudly if missing | `Secrets.Get("SHOP_PASSWORD")` |
+| `Utils/Secrets` | Read a credential from the environment; fail loudly if missing; remember it for masking (from the template) | `Secrets.Get("SHOP_PASSWORD")` |
+| `Utils/Redaction` | Mask secrets as `***` in traces and browser diagnostics (from the template) | `Redaction.Remember(token)` |
+| `Utils/BrowserDiagnostics` | Collect what the browser said during a UI test, for a failed test's TRX (from the template) | `BrowserDiagnostics.Attach(Context)` in `UiTest` |
 | `Utils/ApiContext` | Create an `IAPIRequestContext` with `API_URL` (or `BASE_URL` when that is unset or empty) and a key header | used by `OrdersApi.CreateAsync` |
 | `Utils/DbConnections` | Open a `DbConnection` from a connection string in the environment | used to build an `OrdersDb` |
 | `Utils/UniqueData` | Values unique per test and run | `UniqueData.Email("buyer")` |
@@ -72,7 +74,9 @@ public static async Task<T> UntilAsync<T>(Func<Task<T>> attempt, Func<T, bool> d
 
 ## 4. Secrets and redaction
 
-- Read credentials only through `Secrets.Get`, which throws a clear message naming the missing variable.
+- Read credentials only through `Secrets.Get`, which throws a clear message naming the missing variable. It also hands each value to `Redaction`, so traces and browser diagnostics mask it. A project's own `Secrets` must keep the `Redaction.Remember(value)` call. `[secrets-remembered]`
+- **A secret that doesn't come from `Secrets.Get`,** such as a generated password or a token an Api class got back, goes through `Redaction.Remember(value)` as soon as it exists. Values under 4 characters are ignored.
+- **What masking can't reach:** text drawn in a trace's screenshots, and a secret the framework never saw. That includes one typed into an ordinary text field or printed on the page. A value typed into a `type="password"` field is masked even if no one remembered it. `secret-scan` is still the gate before anything is published (reporting).
 - Never write a secret into an exception message, a log line or a report. Name the variable, not its value.
 - Console output is allowed in Utils, but prefer the test framework's output. Console text is interleaved in parallel runs. `[no-console-output]`
 

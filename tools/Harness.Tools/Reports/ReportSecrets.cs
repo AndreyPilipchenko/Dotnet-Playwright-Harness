@@ -15,7 +15,7 @@ internal static partial class ReportSecrets
 {
     private const int MaxDecodeDepth = 2;
 
-    private const string SecretNames =
+    internal const string SecretNames =
         "password|passwd|pwd|current_password|new_password|password_confirmation|secret|client_secret|api_key|apikey|x-api-key"
         + "|token|access_token|refresh_token|id_token|auth_token|authorization|cookie|set-cookie";
 

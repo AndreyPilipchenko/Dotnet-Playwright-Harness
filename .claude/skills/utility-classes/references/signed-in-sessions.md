@@ -44,7 +44,8 @@ A test class opts in with one line: `protected override string? Role => Roles.Cu
   (`BASE_URL`). An API on its own origin (`API_URL`) sets cookies for that origin, not the app's.
   Throw from the sign-in when the response is not OK, for example
   `API sign-in for <email> returned 401.`, so the failure says why.
-- **API sign-in, token in local storage:** get the token from the Api class, open a page on the app,
+- **API sign-in, token in local storage:** get the token from the Api class (which calls
+  `Redaction.Remember(token)`, so traces and diagnostics mask it), open a page on the app,
   write it with `page.EvaluateAsync("t => localStorage.setItem('<key>', t)", token)`, then let the state
   be saved. A token the app keeps in session storage can't be saved this way: use the fallback below.
   The local-storage form isn't spiked yet (docs/framework-matrix.md), so check it with a signed-in test
