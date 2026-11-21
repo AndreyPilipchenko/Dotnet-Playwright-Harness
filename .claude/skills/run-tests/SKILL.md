@@ -56,8 +56,9 @@ Each run keeps its own TRX file as evidence.
 
 **The rerun block.** The pre-shell hook blocks a `dotnet test` command that already failed until
 a source, test or data file is edited. It compares the command **without** `--results-directory`,
-`--report-trx`, `--no-build` and `--no-restore`, so a new label doesn't make a failed run new. A
-blocked rerun means: diagnose first (maintain-test). Never look for a variant of the command that
+`--report-trx`, `--no-build` and `--no-restore`, so a new label doesn't make a failed run new.
+Setting `BROWSER`, `HEADED`, `BASE_URL` or `API_URL` in the same command (`$env:BASE_URL = '…'; dotnet test …`)
+does make it a different run, so an environment fix can be checked. A blocked rerun means: diagnose first (maintain-test). Never look for a variant of the command that
 gets past it.
 
 **Two planned runs** (automate-test verification) go in **one** shell command, each with its own

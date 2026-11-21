@@ -92,7 +92,7 @@ What the runs showed:
 
 - **No matching test:** exit code **8**, `Zero tests ran` on the module line and as the summary (`Test run summary: Zero tests ran`, `error: 1`, `total: 0`). Same on all three. `hook post-shell` does not count it as a failure. A skill must not count it as a pass either.
 - **Skipped tests:** the run still ends `Test run summary: Passed!` with exit code **0**, and only the `skipped: 1` line shows the skip. A skipped test is visible only in that line.
-- **Separate results folders:** two runs of the same project with different `--results-directory` values each wrote their own `<project>_<tfm>_<arch>.trx`. The pre-shell rerun block ignores `--results-directory`, `--report-trx`, `--no-build` and `--no-restore` when it compares commands, but counts `BROWSER` and `HEADED` (`TestRuns.Fingerprints`). A new folder doesn't make a failed run new. Two planned runs therefore go in one command joined with `;`. Only runs inside the project root count: the hook reads the payload's `cwd` and follows `cd`, `Set-Location` and `Push-Location` segments, so a run in a scratch copy outside the project (break it once) is neither recorded nor blocked. This is covered by unit tests; it has not been observed live, because the `cwd` payload field comes from the Claude Code hook documentation.
+- **Separate results folders:** two runs of the same project with different `--results-directory` values each wrote their own `<project>_<tfm>_<arch>.trx`. The pre-shell rerun block ignores `--results-directory`, `--report-trx`, `--no-build` and `--no-restore` when it compares commands, but counts `BROWSER`, `HEADED`, `BASE_URL` and `API_URL` set in the same command (`TestRuns.Fingerprints`; the two URLs added after the Phase 7c pilot, where an inline `BASE_URL` fix was blocked). A new folder doesn't make a failed run new. Two planned runs therefore go in one command joined with `;`. Only runs inside the project root count: the hook reads the payload's `cwd` and follows `cd`, `Set-Location` and `Push-Location` segments, so a run in a scratch copy outside the project (break it once) is neither recorded nor blocked. This is covered by unit tests; it has not been observed live, because the `cwd` payload field comes from the Claude Code hook documentation.
 - `total` counts every test that ran, including the scaffold's own `GreetingTests` when the filter selects it.
 
 ## Test attributes and lifecycle (verified 2026-11-08)
@@ -101,7 +101,7 @@ Spiked on projects scaffolded from the templates, with warnings as errors, Chrom
 
 | | NUnit | xUnit v3 | MSTest v4 |
 |---|---|---|---|
-| Test class | plain class deriving from `UiTest` | same | `[TestClass]` needed on every test class |
+| Test class | plain class deriving from `UiTest` (`ApiTest` for API-only) | same | `[TestClass]` needed on every test class |
 | Test | `[Test]` | `[Fact]` | `[TestMethod]` |
 | Data rows | `[TestCase(a, b)]` on the method, no `[Test]` needed | `[Theory]` + `[InlineData(a, b)]` | `[TestMethod]` + `[DataRow(a, b)]` |
 | Category | `[Category("x")]` | `[Trait("Category", "x")]` | `[TestCategory("x")]` |
@@ -205,7 +205,7 @@ Checked in a scratch project installed with `setup.ps1` and run through `claude 
 | `post-edit` | Writing a page that calls `Thread.Sleep` gave Claude the `no-hard-wait` finding as feedback ("hook blocking error" on PostToolUse); the file was kept |
 | `session-end` | `sessions.jsonl` got one row per session, with deny and ask counts |
 
-`pre-compact` was not triggered live; its behaviour is covered by unit tests.
+`pre-compact` was triggered live in the Phase 7c pilot (see "Acceptance pilot" below).
 
 **Second live pass (2026-11-08), `claude -p` on a project made with `setup.ps1`:**
 
@@ -266,3 +266,37 @@ Used by automate-test when playwright-cli isn't available. On an NUnit project s
 - `Harness.Tools scratch-copy --to <new folder>` copied the 127 tracked and untracked files. It did not copy `bin/`, `obj/` or `.harness/state/`. The copy built with 0 warnings.
 - `scratch-copy` refuses (exit 64, nothing copied) a target that is the project root, inside it, inside the git repository that contains it (also when `--root` is a subfolder), or already exists.
 - A probe test in the copy ran `Page.GotoAsync("/todomvc/")`, `await Page.Locator("body").AriaSnapshotAsync()` and `GetByRole(…).CountAsync()`, and wrote them to a file with `File.WriteAllTextAsync`. The run passed, and the file held the accessibility tree in the same YAML form as a playwright-cli snapshot, without refs.
+
+## Acceptance pilot (verified 2026-11-19 and 2026-11-20, Windows, Claude Code 2.1.329)
+
+Master plan Verification item 5. Three scratch projects (NUnit, xUnit v3, MSTest v4), each made with `setup.ps1` and `scaffold`, run against Toolshop (`sprint5-with-bugs`; UI `http://localhost:4200`, API `http://localhost:8091`). Every stage was a fresh `claude -p` session (`--setting-sources project,local`, `acceptEdits`, empty `--strict-mcp-config` unless noted). The prompt was phrased the way a user would put it and never named a skill. The story was a six-criterion sign-in and product-search requirement with one vague criterion ("results appear quickly").
+
+| Stage | NUnit | xUnit | MSTest |
+|---|---|---|---|
+| 1 Set up the framework | scaffold-framework; login test green ×2, break red | scaffold-framework; login test green ×2 | scaffold-framework; smoke test green ×2 |
+| 2 Analyze the requirement | requirements-analysis; 7 REQ, 22 questions | requirements-analysis; 7 REQ, 18 questions | requirements-analysis; 7 REQ, 18 questions |
+| 3 Design test cases | test-case-design; 7 TC | test-case-design; 9 TC | test-case-design; 9 TC |
+| 4 Automate one UI and one API case | automate-test (test-author, framework-reviewer, loosened-reviewer, suite-runner); both broke red, then green ×2; resumed an interrupted session's partial work | the same, with the Playwright, Learn and Context7 MCP servers connected (no MCP tool was called); both broke red, green ×2 | the same, plus findings-verifier and 2 repair rounds; both broke red, green ×2 |
+| 5 Review the changes | framework-review; CHANGES-REQUIRED (a case-insensitive check the TC doesn't allow, confirmed by findings-verifier) | framework-review; APPROVE | framework-review; APPROVE; first `class-ledger.md` entry |
+| 6 Failing test after a commit | maintain-test (failure-investigator): planted locator typo classified as a test defect, fix proposed, no bug | not run | maintain-test: planted TC/data rename classified as an unconfirmed requirement change, no bug |
+| 7 Is the requirement covered? | coverage-audit (coverage-auditor): 2 of 10 lines Built | coverage-audit: 4 of 10 Built | coverage-audit: 2 of 10 Built; noticed the conflicting product name |
+
+- **bug-report** was checked on its own (xUnit): a real `sprint5-with-bugs` defect (the Home nav link routes to `#/contact`) was reproduced in the browser and written as `BUG-001`, with no commit and no issue created.
+- **`pre-compact` (live):** `/compact` sent with `--continue` to a finished session fired `PreCompact`, which appended "Context compacted at …" to `.harness/state/session-notes.md` and showed its reminder. `SessionStart:compact` re-injected the harness reminders.
+- **Without the MCP servers** every stage finished; with them (xUnit stage 4) nothing changed.
+- **The `dotnet-test` overlay:** see `external-tools.md`.
+
+Fixes made because of the pilot:
+
+| Finding | Fix |
+|---|---|
+| `setup.ps1` hint printed `--framework <framework>` | prints the recorded values |
+| scaffold playbook said "observe the page" with no pointer | links automate-test's `observe.md` |
+| session-start pointed to a CLAUDE.md that consumer projects don't get | points to pom-architecture's Routing table |
+| break-it-once and probe copies were left behind: `Remove-Item -Recurse` outside the project is denied under `-p` (all three runs) | `scratch-copy --remove <dir>` deletes only folders holding the `.harness-scratch-copy` marker (exit 64 otherwise); checked on a built copy |
+| an API on its own origin had no convention: sessions invented `API_URL` and `API_BASE_URL` | `ApiContext` reads `API_URL`, falling back to `BASE_URL` when it is unset or empty; harness-setup, service-classes, utility-classes, ci-pipeline and the smoke and nightly templates name it |
+| the rerun guard blocked `$env:BASE_URL = '…'; dotnet test …` after a run failed for want of `BASE_URL` | `BASE_URL` and `API_URL` set in the command count as run settings, like `BROWSER` and `HEADED` |
+
+**Fixed (api-test-base):** API-only test classes derive from the new browserless `ApiTest` (adapter `PlaywrightTest`), so they start no browser. Spiked on all three frameworks with Chromium not installed: a probe test in `Api/` calling `Playwright.APIRequest.NewContextAsync()` built with warnings as errors and passed on NUnit, xUnit v3 and MSTest (`--filter "Name=..."` on NUnit and MSTest, `--filter-class` on xUnit). `ApiTest` needs no code of its own; the assembly-level parallelism attributes in `UiTest.cs` still apply.
+
+**Not verified:** `scratch-copy --remove` and the new rerun-guard behaviour inside a live session (verified by unit tests and a direct run only); stage 6 on xUnit; maintain-test handing a product defect to bug-report in one session.

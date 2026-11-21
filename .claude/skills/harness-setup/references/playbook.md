@@ -52,6 +52,7 @@ as changed locally, so a later update that touches it reports a conflict again.
 ## 3. Configure
 
 - **Application URL:** tests read the `BASE_URL` environment variable (`Setup/UiTest.cs`). Ask for the test environment's URL. Never assume that production is acceptable.
+- **API URL:** when the API has its own origin, Api classes read `API_URL` (`Utils/ApiContext`); unset or empty, they use `BASE_URL`. Ask whether the API shares the app's origin.
 - **Secrets:** the framework reads them with `Secrets.Get("<NAME>")`, from the environment, and fails loudly when one is missing. Give the user the names to set. The harness denies reading `.env` files.
 - **Browser:** `BROWSER` (`chromium`, `firefox` or `webkit`) and `HEADED=1`. Install it once after a build: `tests/<Name>.Tests/bin/Debug/<tfm>/playwright.ps1 install chromium`.
 - **Page observation:** automate-test and execute-test copy `cli.config.json` with the app's origin when they need it. Nothing to do here.
@@ -69,6 +70,7 @@ not a failure.
 | Hooks are merged | `.claude/settings.json` mentions `Harness.Tools.dll` | safety rules |
 | Framework exists | `src/` and `tests/` exist | everything after scaffold |
 | `BASE_URL` | `$env:BASE_URL` is set | tests against an application |
+| `API_URL` (optional) | `$env:API_URL` is set | API tests when the API has its own origin |
 | GitHub CLI (optional) | `gh auth status` | CI and pull-request skills |
 | Node and npx (optional) | `npx --yes @playwright/cli@0.1.23 --version` | execute-test, page observation |
 

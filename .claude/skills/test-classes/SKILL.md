@@ -5,7 +5,7 @@ description: Use when creating, naming, structuring or reviewing a test class (a
 
 # Test classes
 
-A test class groups the tests of one feature. It derives from `UiTest`, loads its own data once,
+A test class groups the tests of one feature. It derives from `UiTest` (`ApiTest` for API-only tests), loads its own data once,
 sets up the services its tests need, and cleans up after each test.
 
 Read [design-conventions](../pom-architecture/references/design-conventions.md) first: §1, §2
@@ -16,7 +16,7 @@ hook attributes for each framework.
 
 - `<Feature>Tests` in `tests/<Name>.Tests/Ui/<Feature>Tests.cs` (or `Api/` for API-only tests), paired with `resources/testData/<Feature>TestData.json`. `[test-class-naming]` `[test-data-pairing]`
 - One test class per file. The data records it uses may follow it in the same file.
-- It derives from `UiTest`, the only base class. Never create a second base class or an intermediate one.
+- It derives from `UiTest` (tests in `Ui/`) or `ApiTest` (tests in `Api/`, no browser), the only two base classes. Never create a third base class or an intermediate one.
 - MSTest needs `[TestClass]` on every test class. NUnit and xUnit need nothing.
 
 ## 2. Layout
@@ -163,7 +163,7 @@ one feature unless the setup differs.
 
 ## Review checklist
 
-- [ ] `<Feature>Tests` in a matching file, derives from `UiTest`, paired data file exists.
+- [ ] `<Feature>Tests` in a matching file, derives from `UiTest` or, in `Api/`, `ApiTest`, paired data file exists.
 - [ ] Order: data field, service fields, tests, hooks.
 - [ ] Setup creates services; teardown cleans up what tests created, then disposes.
 - [ ] Every test has a vocabulary category; known defects carry `bug:<id>`.

@@ -18,7 +18,7 @@ apply here: runsettings are silently ignored (NUnit, MSTest) or rejected (xUnit)
 
 | | NUnit | xUnit v3 | MSTest v4 |
 |---|---|---|---|
-| Test class | derives from `UiTest` | derives from `UiTest` | `[TestClass]`, derives from `UiTest` |
+| Test class | derives from `UiTest` (`ApiTest` in `Api/`) | derives from `UiTest` (`ApiTest` in `Api/`) | `[TestClass]`, derives from `UiTest` (`ApiTest` in `Api/`) |
 | Test | `[Test]` | `[Fact]` | `[TestMethod]` |
 | Data rows | `[TestCase(a, b)]` | `[Theory]` + `[InlineData(a, b)]` | `[TestMethod]` + `[DataRow(a, b)]` |
 | Category | `[Category("smoke")]` | `[Trait("Category", "smoke")]` | `[TestCategory("smoke")]` |

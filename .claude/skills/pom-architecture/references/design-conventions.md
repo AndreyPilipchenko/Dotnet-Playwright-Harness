@@ -25,7 +25,7 @@ src/<Name>.Framework/          framework-neutral: references Microsoft.Playwrigh
     Extensions/  <Type>Extensions   extension members on Playwright and BCL types (§8)
   Config/                      environment coordinates and named Timeouts; never secrets
 tests/<Name>.Tests/            the only project that references NUnit, xUnit or MSTest
-  Setup/     UiTest            the one base class, wrapping the adapter's PageTest
+  Setup/     UiTest, ApiTest   the two base classes: UiTest wraps the adapter's PageTest, ApiTest its browserless PlaywrightTest
   Ui/  Api/  <Feature>Tests    test classes
 resources/testData/            <Feature>TestData.json, one per test class
 ```
@@ -36,7 +36,7 @@ resources/testData/            <Feature>TestData.json, one per test class
   - The framework project never uses a test framework or the tests' namespaces.
   - Utils and Config never use business classes. `[layer-boundary]`
 - **No base page.** Pages compose what they need. A shared area such as a header or menu gets its own page class. Implementing an interface is fine. `[no-base-page]`
-  - The only base class is `UiTest` in `tests/<Name>.Tests/Setup/`. It wraps the adapter's `PageTest`, one per framework, and sets context options in code.
+  - The only base classes are `UiTest` (tests in `Ui/`, wraps the adapter's `PageTest`, sets context options in code) and `ApiTest` (tests in `Api/`, wraps the browserless `PlaywrightTest`, starts no browser), both in `tests/<Name>.Tests/Setup/`.
 - **Folder names are exactly the ones above:** `Apis`, not `Api`; `Pages`, not `PageObjects`. The checker picks a file's rules by its folder, so a misnamed folder silently escapes them.
 - **Layers are created on first need.** Never scaffold empty folders. When the first test of a new kind arrives, create its canonical folder; don't park a DB class in `Apis/` because that folder exists.
 - **Tests orchestrate; they never implement.** A test reads as a sequence of business calls. If it needs a locator, an HTTP call, a loop or an `if`, push that work down a layer. HTTP belongs to an `<Domain>Api` class. `[no-http-in-test]`
@@ -254,9 +254,11 @@ public static class ApiContext
         ArgumentNullException.ThrowIfNull(playwright);
         var key = Environment.GetEnvironmentVariable(variable)
             ?? throw new InvalidOperationException($"Set the {variable} environment variable.");
+        // API_URL when the API has its own origin; unset or empty (as in CI) falls back to BASE_URL.
+        var apiUrl = Environment.GetEnvironmentVariable("API_URL");
         return playwright.APIRequest.NewContextAsync(new()
         {
-            BaseURL = Environment.GetEnvironmentVariable("BASE_URL"),
+            BaseURL = string.IsNullOrEmpty(apiUrl) ? Environment.GetEnvironmentVariable("BASE_URL") : apiUrl,
             ExtraHTTPHeaders = new Dictionary<string, string> { [header] = key },
         });
     }
@@ -452,7 +454,7 @@ These differences are settled. Do not reintroduce the TypeScript form.
 | `email_input`, `login_button` | `EmailInput`, `SignInButton`, private properties | .NET naming; the suffix vocabulary is kept |
 | `verify*()` returning `Promise<void>` | `Verify*Async()` returning `Task` | async naming; no fluent `return this` |
 | `<Feature>TestJsonFile.json` | `<Feature>TestData.json` | Shorter, matches `TestData.Load` |
-| Describe blocks and fixtures | A test class deriving from `UiTest` | One base class per framework wraps the adapter |
+| Describe blocks and fixtures | A test class deriving from `UiTest` | Two base classes per framework wrap the adapter (`UiTest`, `ApiTest`) |
 | Tags `@smoke` | Categories `smoke`, `regression`, `bug:<id>` | Framework category attributes drive `dotnet test` filters |
 | `playwright.config.ts` | `UiTest.ContextOptions()` plus `BROWSER`, `HEADED` and `BASE_URL` environment variables | runsettings are ignored under Microsoft Testing Platform |
 | An Allure step per method | Intent-named methods; traces and TRX as the baseline. Allure is optional (reporting skill) | Allure packages differ per framework and some are previews |

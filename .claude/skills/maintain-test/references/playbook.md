@@ -9,7 +9,7 @@ Record in the assessment:
 
 - The test's full name, its `tc:` and `bug:` categories, and the test case it automates.
 - The commit (`git rev-parse --short HEAD`) and any uncommitted changes to the files involved (`git status --short`).
-- The environment (`BASE_URL`, browser) and the application build, if known.
+- The environment (`BASE_URL`, `API_URL` if set, browser) and the application build, if known.
 - The requested outcome and any restriction, such as "evidence only".
 
 ## 2. Evidence
@@ -46,7 +46,7 @@ Typical causes for Playwright tests, to check before guessing:
 - **Timing:** an action ran before the app was ready, or a check reads a list while it is still loading. The fix is a web-first wait on the right condition, never a sleep.
 - **Data:** a value isn't unique per run, a record was left by another test, the seed failed silently, or the expected value changed in the JSON.
 - **Cleanup:** an earlier test's teardown didn't run or didn't delete, so this test sees extra rows.
-- **Environment:** `BASE_URL`, an expired secret, the app down, a browser not installed.
+- **Environment:** `BASE_URL` or `API_URL`, an expired secret, the app down, a browser not installed.
 
 ## 4. Controlled experiments
 

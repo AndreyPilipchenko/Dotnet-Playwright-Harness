@@ -11,10 +11,11 @@ framework mechanics.
 
 ## 1. The base class
 
-`tests/<Name>.Tests/Setup/UiTest.cs` is the only base class. It derives from the adapter's
+`tests/<Name>.Tests/Setup/UiTest.cs` and `ApiTest.cs` are the only base classes. `UiTest` derives from the adapter's
 `PageTest` (`Microsoft.Playwright.NUnit`, `.Xunit.v3` or `.MSTest`), which gives each test a
 fresh browser context and a `Page`. The adapter also exposes `Playwright` (for API request
 contexts), `Browser` and `Context`.
+`ApiTest` derives from the adapter's browserless `PlaywrightTest`: it exposes `Playwright` but starts no browser or page, so API-only classes in `Api/` derive from it. It carries no context options or tracing.
 
 Change context options here, in `ContextOptions()`, never in runsettings:
 

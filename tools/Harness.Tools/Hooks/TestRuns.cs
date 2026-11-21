@@ -65,9 +65,10 @@ internal static partial class TestRuns
     }
 
     /// <summary>
-    /// The <c>BROWSER</c> and <c>HEADED</c> values the command sets (PowerShell <c>$env:X = 'v'</c> or a
+    /// The <c>BROWSER</c>, <c>HEADED</c>, <c>BASE_URL</c> and <c>API_URL</c> values the command sets (PowerShell <c>$env:X = 'v'</c> or a
     /// POSIX <c>X=v</c> prefix), as a suffix such as <c>|BROWSER=firefox</c>. They change how the tests
-    /// run, so a diagnostic run in another browser is a different run. Other variables don't count.
+    /// run, so a diagnostic run in another browser, or one with the application address fixed, is a
+    /// different run. Other variables don't count.
     /// </summary>
     private static string RunSettings(string command)
     {
@@ -133,7 +134,7 @@ internal static partial class TestRuns
     [GeneratedRegex(@"\s--(?:report-trx|no-build|no-restore)(?=\s|$)", RegexOptions.IgnoreCase)]
     private static partial Regex SelectionNeutralFlag();
 
-    [GeneratedRegex("""(?:\$env:|(?<![\w$:]))(?<name>BROWSER|HEADED)\s*=\s*["']?(?<value>[\w.-]+)""", RegexOptions.IgnoreCase)]
+    [GeneratedRegex("""(?:\$env:|(?<![\w$:]))(?<name>BROWSER|HEADED|BASE_URL|API_URL)\s*=\s*["']?(?<value>[^\s"';&|]+)""", RegexOptions.IgnoreCase)]
     private static partial Regex RunSetting();
 
     [GeneratedRegex(@"Test run summary:\s*(?:Failed|Aborted)|^\s*failed:\s*[1-9]|^\s*Failed!\s+-\s+Failed:\s+[1-9]|\bBuild FAILED\b|\berror (?:CS|MSB|NU|NETSDK)\d{3,5}\b", RegexOptions.Multiline)]

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Harness.Tools.Scratch;
 
 namespace Harness.Tools.Tests.Scratch;
 
@@ -143,6 +144,66 @@ public class ScratchCopyTests
 
         Assert.Equal(ExitCodes.Usage, code);
         Assert.Contains("--to", io.Err.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MarksTheCopy_SoRemoveCanTellItFromOtherFolders()
+    {
+        using var dir = Repository();
+        var target = dir.Combine("copy");
+
+        var (code, _) = Run("scratch-copy", "--root", dir.Combine("project"), "--to", target);
+
+        Assert.Equal(ExitCodes.Ok, code);
+        Assert.True(File.Exists(Path.Combine(target, ScratchCopy.MarkerFile)));
+    }
+
+    [Fact]
+    public void RemoveDeletesAMarkedCopy()
+    {
+        using var dir = Repository();
+        var target = dir.Combine("copy");
+        Assert.Equal(ExitCodes.Ok, Run("scratch-copy", "--root", dir.Combine("project"), "--to", target).Code);
+        dir.Write("copy/bin/Debug/x.dll", "binary");
+
+        var (code, io) = Run("scratch-copy", "--remove", target);
+
+        Assert.Equal(ExitCodes.Ok, code);
+        Assert.False(Directory.Exists(target));
+        Assert.Contains("Removed ", io.Out.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RemoveRefusesAFolderWithoutTheMarker()
+    {
+        using var dir = new TempDir();
+        dir.Write("other/keep.txt", "keep");
+
+        var (code, io) = Run("scratch-copy", "--remove", dir.Combine("other"));
+
+        Assert.Equal(ExitCodes.Usage, code);
+        Assert.True(File.Exists(dir.Combine("other", "keep.txt")));
+        Assert.Contains(ScratchCopy.MarkerFile, io.Err.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RemoveOfAMissingFolderIsANoOp()
+    {
+        using var dir = new TempDir();
+
+        var (code, _) = Run("scratch-copy", "--remove", dir.Combine("gone"));
+
+        Assert.Equal(ExitCodes.Ok, code);
+    }
+
+    [Fact]
+    public void RemoveCannotBeCombinedWithTo()
+    {
+        using var dir = new TempDir();
+
+        var (code, _) = Run("scratch-copy", "--remove", dir.Combine("a"), "--to", dir.Combine("b"));
+
+        Assert.Equal(ExitCodes.Usage, code);
     }
 
     [Fact]

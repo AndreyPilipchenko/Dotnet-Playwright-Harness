@@ -50,7 +50,7 @@ Without the CLI, observe through a throwaway test that never reaches the reposit
 1. `dotnet .harness/tools/bin/Harness.Tools.dll scratch-copy --to <scratchpad>\probe-<TC-id>`.
 2. In the copy, add a test that navigates with the page's `NavigateAsync`, or with `Page.GotoAsync` in the probe only. It writes what you need to a file in the copy with `File.WriteAllTextAsync`: the page's accessibility tree from `await Page.Locator("body").AriaSnapshotAsync()`, and the count of each candidate locator from `CountAsync()`.
 3. Run only that test in the copy through `suite-runner`, then read the file.
-4. Delete the copy. The probe breaks the conventions on purpose; it must never be copied back.
+4. Delete the copy with `dotnet .harness/tools/bin/Harness.Tools.dll scratch-copy --remove <scratchpad>\probe-<TC-id>`. The probe breaks the conventions on purpose; it must never be copied back.
 
 ## What to write down
 

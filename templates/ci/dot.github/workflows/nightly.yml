@@ -1,5 +1,5 @@
 # The whole suite every night (GitHub runs schedules only on the default branch), and by hand.
-# Set the repository variable BASE_URL to the application under test.
+# Set the repository variable BASE_URL to the application under test, and API_URL when its API has another origin.
 
 name: Nightly tests
 
@@ -21,6 +21,7 @@ jobs:
     timeout-minutes: 60
     env:
       BASE_URL: ${{ vars.BASE_URL }}
+      API_URL: ${{ vars.API_URL }}
       BROWSER: chromium
     steps:
       - uses: actions/checkout@v7

@@ -8,13 +8,15 @@ internal static class ScratchCopyCommand
                                new folder outside it, for example to break a test once without touching the repo:
                                  --to <dir>            the new folder (required; must not exist, must be outside --root and its git repository)
                                  --root <dir>          project root, a git repository (default: current directory)
-                               Exit: 0 copied, 1 git failed or not a repository, 64 bad arguments.
+                                 --remove <dir>        instead of copying, delete a folder this command made (it holds .harness-scratch-copy)
+                               Exit: 0 copied or removed, 1 git or delete failed, 64 bad arguments or an unmarked folder.
         """;
 
     public static int Run(string[] args, TextWriter stdout, TextWriter stderr)
     {
         var root = Directory.GetCurrentDirectory();
         string? target = null;
+        string? remove = null;
         for (var i = 0; i < args.Length; i++)
         {
             switch (args[i])
@@ -25,11 +27,25 @@ internal static class ScratchCopyCommand
                 case "--to" when i + 1 < args.Length:
                     target = args[++i];
                     break;
+                case "--remove" when i + 1 < args.Length:
+                    remove = args[++i];
+                    break;
                 default:
                     stderr.WriteLine($"Unknown or incomplete option '{args[i]}'.");
                     stderr.WriteLine(Usage);
                     return ExitCodes.Usage;
             }
+        }
+
+        if (remove is not null)
+        {
+            if (target is not null)
+            {
+                stderr.WriteLine("Pass either --to or --remove, not both.");
+                return ExitCodes.Usage;
+            }
+
+            return Remove(Path.GetFullPath(remove), stdout, stderr);
         }
 
         if (target is null)
@@ -65,6 +81,38 @@ internal static class ScratchCopyCommand
             return ExitCodes.Ok;
         }
         catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+        {
+            stderr.WriteLine(ex.Message);
+            return ExitCodes.Failed;
+        }
+    }
+
+    private static int Remove(string folder, TextWriter stdout, TextWriter stderr)
+    {
+        if (!Directory.Exists(folder))
+        {
+            stdout.WriteLine($"{folder} does not exist; nothing to remove.");
+            return ExitCodes.Ok;
+        }
+
+        if (!ScratchCopy.IsMarked(folder))
+        {
+            stderr.WriteLine($"{folder} has no {ScratchCopy.MarkerFile}, so scratch-copy did not make it. Not removed.");
+            return ExitCodes.Usage;
+        }
+
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories))
+            {
+                File.SetAttributes(file, FileAttributes.Normal);
+            }
+
+            Directory.Delete(folder, recursive: true);
+            stdout.WriteLine($"Removed {folder}.");
+            return ExitCodes.Ok;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             stderr.WriteLine(ex.Message);
             return ExitCodes.Failed;

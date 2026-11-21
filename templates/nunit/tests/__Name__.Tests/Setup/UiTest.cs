@@ -8,7 +8,7 @@ using NUnit.Framework.Interfaces;
 namespace {{Name}}.Tests.Setup;
 
 /// <summary>
-/// The only base class for UI tests. The browser is chosen by the BROWSER and HEADED environment
+/// The base class for UI tests, next to ApiTest for API tests. The browser is chosen by the BROWSER and HEADED environment
 /// variables, because runsettings are ignored under Microsoft Testing Platform. Context options
 /// are set here, in code. With TRACE_DIR set, a failed test leaves a Playwright trace there.
 /// </summary>

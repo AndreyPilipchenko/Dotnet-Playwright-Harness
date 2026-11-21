@@ -43,7 +43,7 @@ The plugin has 26 skills and 10 agents.
 - The Phase 1 spikes confirmed its MTP command and filter facts (see `framework-matrix.md`): `--project`, `--report-trx`, `--filter "TestCategory=x"` for NUnit and MSTest, `--filter-trait` for xUnit v3. These go into the `test-framework` and `run-tests` playbooks, written from our spike results.
 - The plugin is not installed by `setup.ps1`. Its `run-tests` skill would compete with ours, and its agents are written for GitHub Copilot.
 - If a user installs it anyway, `scaffold` writes `.agents/skill-overlays/dotnet-test/run-tests.md` with the project's exact commands, so both skills give the same commands.
-- Whether the plugin loads that overlay in Claude Code is checked in the Phase 7 acceptance pilot.
+- **Overlay checked live (Phase 7c pilot, 2026-11-20, Claude Code 2.1.329, plugin 1.0.1 at project scope):** with the plugin installed, both `run-tests` and `dotnet-test:run-tests` are listed. Asked "run the TC-006 test", the session chose the harness `run-tests`, so the overlay was not read. Asked to use `dotnet-test:run-tests`, the plugin skill read `.agents/skill-overlays/dotnet-test/run-tests.md` and ran the overlay's exact command (`--project`, `--report-trx`, `--filter-trait`) through `suite-runner`. Installing the plugin rewrote `.claude/settings.json` (keys reordered, `enabledPlugins` added) but kept every harness hook and deny rule.
 
 ### `eng/skill-validator`
 
