@@ -1,6 +1,6 @@
 ---
 name: automate-test
-description: Use when asked to automate a designed test case, or a set of them, in a Playwright C# framework built with this harness - turning TC records into tests by observing the page, writing the code through the test-author agent, an independent review, breaking each new test once to prove it can fail, and two scoped green runs.
+description: Use when asked to automate a designed test case, or a set of them, in a Playwright C# framework built with this harness - turning TC records into tests by observing the page, writing the code through the test-author agent, an independent review, breaking each new test once to prove it can fail, and two scoped green runs. Also when asked to prove that an existing or changed test can still fail.
 ---
 
 # Automate a test case

@@ -72,6 +72,11 @@ use a repair round.
 ## 6. Break it once
 
 This proves each new test can fail. Do it after the review is clean, for every new or changed test.
+It also stands alone: when a test changed outside this skill (a new base class, a refactor) or the
+user asks you to prove that a test can fail, run this stage and then stage 7.
+
+**Never break the test in the project itself,** not even with a restore afterwards. An interrupted
+session leaves the break behind in the user's code. The break lives only in the scratch copy.
 
 1. `dotnet .harness/tools/bin/Harness.Tools.dll scratch-copy --to <scratchpad>\break-<TC-id>`. The folder must be new and outside the repository.
 2. In the copy, use Edit to change the **one** thing that makes an expected result true. Usually that is the expected value in the copy's `resources/testData/<Feature>TestData.json`, such as `"0 items left"` → `"9 items left"`. If the value isn't data, change the `Verify*` target in the copy instead.
