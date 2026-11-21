@@ -55,8 +55,80 @@ public static partial class Redaction
         text = HeaderLine().Replace(text, "${pre}" + Hidden);
         text = BearerToken().Replace(text, "${pre}" + Hidden);
         text = Jwt().Replace(text, Hidden);
-        text = JsonField().Replace(text, "${pre}" + Hidden);
+        text = MaskJsonFields(text);
         return QueryField().Replace(text, "${pre}" + Hidden);
+    }
+
+    // "password":"…" in bodies, and \"access_token\":\"…\" inside an escaped body. The value may hold
+    // escaped quotes, so its end is found by EndOfValue rather than by the regex.
+    private static string MaskJsonFields(string text)
+    {
+        var result = new StringBuilder(text.Length);
+        var copied = 0;
+        foreach (Match field in JsonField().Matches(text))
+        {
+            var start = field.Index + field.Length;
+            if (field.Index < copied || EndOfValue(text, start, field.Groups["esc"].Length) is not (>= 0 and var end))
+            {
+                continue;
+            }
+
+            result.Append(text, copied, start - copied).Append(Hidden);
+            copied = end;
+        }
+
+        return result.Append(text, copied, text.Length - copied).ToString();
+    }
+
+    // A string nested n levels deep in JSON strings opens and closes with a quote after 0, 1, 3 or 7
+    // backslashes. Inside it, a quote closes the value only when the backslashes before it number
+    // r ≡ n (mod 2(n+1)); any other quote is part of the value. Returns -1 when no end is found.
+    private static int EndOfValue(string text, int start, int n)
+    {
+        if ((n & (n + 1)) != 0)
+        {
+            return -1;
+        }
+
+        for (var i = start; i < text.Length; i++)
+        {
+            if (text[i] == '\n')
+            {
+                return -1;
+            }
+
+            if (text[i] != '\\' && text[i] != '"')
+            {
+                continue;
+            }
+
+            var run = 0;
+            while (i + run < text.Length && text[i + run] == '\\')
+            {
+                run++;
+            }
+
+            if (i + run < text.Length && text[i + run] == '"')
+            {
+                if (run % (2 * (n + 1)) == n)
+                {
+                    return i + run - n;
+                }
+
+                if (run == 0)
+                {
+                    return -1;
+                }
+            }
+
+            i += Math.Max(run, 1) - 1;
+            if (run > 0 && i + 1 < text.Length && text[i + 1] == '"')
+            {
+                i++;
+            }
+        }
+
+        return -1;
     }
 
     /// <summary>
@@ -69,27 +141,25 @@ public static partial class Redaction
         var temp = path + ".masking";
         try
         {
+            // Two passes, one entry at a time, so a large trace is never held in memory whole.
             using (var source = ZipFile.OpenRead(path))
             using (var target = ZipFile.Open(temp, ZipArchiveMode.Create))
             {
-                var entries = source.Entries.Select(e => (Entry: e, Bytes: ReadAll(e))).ToList();
-                var texts = entries.Select(e => AsText(e.Bytes)).ToList();
-
                 // A value typed into a password field is a secret however the test got it, so it is
                 // remembered before anything is masked, and then hidden in every entry.
-                foreach (var text in texts.OfType<string>())
+                foreach (var entry in source.Entries)
                 {
-                    RememberPasswordFields(text);
+                    RememberPasswordFields(ReadText(entry) ?? string.Empty);
                 }
 
-                for (var i = 0; i < entries.Count; i++)
+                foreach (var entry in source.Entries)
                 {
-                    var name = entries[i].Entry.FullName;
-                    var masked = texts[i] is { } text ? MaskEntry(name, text) : null;
-                    var copy = target.CreateEntry(name, CompressionLevel.Optimal);
-                    copy.LastWriteTime = entries[i].Entry.LastWriteTime;
+                    var bytes = ReadAll(entry);
+                    var masked = AsText(bytes) is { } text ? MaskEntry(entry.FullName, text) : null;
+                    var copy = target.CreateEntry(entry.FullName, CompressionLevel.Optimal);
+                    copy.LastWriteTime = entry.LastWriteTime;
                     using var output = copy.Open();
-                    output.Write(masked is null ? entries[i].Bytes : StrictUtf8.GetBytes(masked));
+                    output.Write(masked is null ? bytes : StrictUtf8.GetBytes(masked));
                 }
             }
 
@@ -169,6 +239,8 @@ public static partial class Redaction
         return buffer.ToArray();
     }
 
+    private static string? ReadText(ZipArchiveEntry entry) => AsText(ReadAll(entry));
+
     // Text is strict UTF-8 with no NUL character; anything else (screenshots) is binary.
     private static string? AsText(byte[] bytes)
     {
@@ -212,8 +284,8 @@ public static partial class Redaction
     [GeneratedRegex(@"eyJ[\w-]{5,}\.eyJ[\w-]{5,}\.[\w-]*")]
     private static partial Regex Jwt();
 
-    // "password":"…" in bodies, and \"access_token\":\"…\" inside an escaped body.
-    [GeneratedRegex(@"(?<pre>\\*""(?:" + SecretNames + @")\\*""\s*:\s*\\*"")(?:[^""\\]|\\[^""])*(?=\\*"")", RegexOptions.IgnoreCase)]
+    // Up to the opening quote of a secret-named field's value; esc is the backslashes before each quote.
+    [GeneratedRegex(@"(?<esc>\\*)""(?:" + SecretNames + @")\k<esc>""\s*:\s*\k<esc>""", RegexOptions.IgnoreCase)]
     private static partial Regex JsonField();
 
     // ?api_key=… in URLs, and password=… in form bodies.

@@ -95,9 +95,11 @@ public class ScaffolderTests
             ["public static void Remember(string value)", "public static string Mask(string text)", "public static void MaskZip(string path)",
              "authorization|proxy-authorization|cookie|set-cookie|x-api-key", "access_token", "\"***\"", "eyJ", "\"cookies\"", "throwOnInvalidBytes: true",
              // A value typed into a password field is masked even when no one remembered it (side-agent finding).
-             "__playwright_value_", "\"\"password\"\"", "RememberPasswordFields(text)",
+             "__playwright_value_", "\"\"password\"\"",
              // Review findings: whole-value matches only, and a masked JSON line that no longer parses fails the masking.
-             "(?<![\\w-])", "Masking broke the JSON of"],
+             "(?<![\\w-])", "Masking broke the JSON of",
+             // Review follow-ups: a scanner finds where a field's value ends, and the zip is read one entry at a time.
+             "EndOfValue(", "RememberPasswordFields(ReadText("],
             s => Assert.Contains(s, text, StringComparison.Ordinal));
         Assert.All(["Console.", ".Result", ".Wait()"], s => Assert.DoesNotContain(s, text, StringComparison.Ordinal));
     }

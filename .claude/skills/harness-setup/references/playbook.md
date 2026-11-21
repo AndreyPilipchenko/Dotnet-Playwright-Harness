@@ -94,7 +94,10 @@ The steps are in [signed-in sessions](../../utility-classes/references/signed-in
      failure, `TraceFiles.MaskOrRemove` on the saved trace, followed by the `Report()` lines on the
      framework's test output.
 - Run check-conventions. Rename secret-named test data fields that hold made-up values, such as
-  `wrongPassword`, and move real credentials to `Secrets.Get`. `[secret-in-test-data]`
+  `wrongPassword`, `candidatePassword` or `tooShortPassword`, and move real credentials to
+  `Secrets.Get`. `[secret-in-test-data]`
+  - This rule and `[secret-literal]` can't be exempted or recorded in a baseline.
+  - `--write-baseline` refuses while a finding from either is open, so fix those first.
 
 ## 3. Configure
 

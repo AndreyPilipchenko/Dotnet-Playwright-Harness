@@ -301,17 +301,69 @@ internal static partial class ConventionRules
     private static IEnumerable<RuleHit> SecretLiteral(SourceFile f, RuleContext _) =>
         SecretScanner.Scan(f.Text).Select(s => new RuleHit(s.Line, "[redacted]", s.HighConfidence ? Severity.Fail : Severity.Warn));
 
-    private static IEnumerable<RuleHit> SecretsRemembered(SourceFile f, RuleContext _)
+    private static IEnumerable<RuleHit> SecretsRemembered(SourceFile f, RuleContext context)
     {
-        if (!Path.GetFileName(f.RelativePath).Equals("Secrets.cs", StringComparison.Ordinal)
-            || f.Text.Contains("Redaction.Remember(", StringComparison.Ordinal))
+        if (!Path.GetFileName(f.RelativePath).Equals("Secrets.cs", StringComparison.Ordinal))
         {
             return [];
         }
 
-        return f.Nodes<ClassDeclarationSyntax>()
-            .Where(c => c.Identifier.Text == "Secrets")
-            .Select(c => new RuleHit(LineOf(c.Identifier)));
+        var classes = f.Nodes<ClassDeclarationSyntax>().Where(c => c.Identifier.Text == "Secrets").ToList();
+        if (classes.Count == 0 || HasRememberCall(classes[0].SyntaxTree.GetCompilationUnitRoot()))
+        {
+            return [];
+        }
+
+        // A partial Secrets may call Remember from another part in the same folder.
+        if (classes.Any(c => c.Modifiers.Any(SyntaxKind.PartialKeyword)))
+        {
+            var self = Path.GetFullPath(Path.Combine(context.Root, f.RelativePath));
+            var folder = Path.GetDirectoryName(self)!;
+            var parts = Directory.EnumerateFiles(folder, "*.cs")
+                .Where(p => !Path.GetFullPath(p).Equals(self, StringComparison.OrdinalIgnoreCase))
+                .Select(ReadOrNull)
+                .Where(t => t is not null && t.Contains("partial", StringComparison.Ordinal) && t.Contains("Secrets", StringComparison.Ordinal))
+                .Select(t => CSharpSyntaxTree.ParseText(t!).GetCompilationUnitRoot())
+                .Where(u => u.DescendantNodes().OfType<ClassDeclarationSyntax>()
+                    .Any(c => c.Identifier.Text == "Secrets" && c.Modifiers.Any(SyntaxKind.PartialKeyword)));
+            if (parts.Any(HasRememberCall))
+            {
+                return [];
+            }
+        }
+
+        return classes.Select(c => new RuleHit(LineOf(c.Identifier)));
+    }
+
+    // A sibling that can't be read is skipped: the rule then reports what it can see.
+    private static string? ReadOrNull(string path)
+    {
+        try
+        {
+            return System.IO.File.ReadAllText(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    // Redaction.Remember, qualified, through an alias, or as a method group; or a bare Remember that the
+    // class doesn't declare itself, so it comes from a using static, local or global. Comments don't count.
+    private static bool HasRememberCall(CompilationUnitSyntax unit)
+    {
+        var redaction = unit.DescendantNodes().OfType<UsingDirectiveSyntax>()
+            .Where(u => u.Alias is not null && u.Name?.ToString().Split('.')[^1] == "Redaction")
+            .Select(u => u.Alias!.Name.Identifier.Text)
+            .Append("Redaction")
+            .ToHashSet(StringComparer.Ordinal);
+        var declaresRemember = unit.DescendantNodes().OfType<MethodDeclarationSyntax>().Any(m => m.Identifier.Text == "Remember");
+        return unit.DescendantNodes().OfType<SimpleNameSyntax>().Any(n => n.Identifier.Text == "Remember" && n.Parent switch
+        {
+            MemberAccessExpressionSyntax m when m.Name == n => redaction.Contains(m.Expression.ToString().Split('.')[^1]),
+            MemberAccessExpressionSyntax => false,
+            _ => !declaresRemember,
+        });
     }
 
     private static IEnumerable<RuleHit> TestDataPairing(SourceFile f, RuleContext context)
@@ -525,6 +577,25 @@ internal static partial class ConventionRules
     private static string NormalizeFieldName(string name) =>
         name.Replace("_", string.Empty, StringComparison.Ordinal).Replace("-", string.Empty, StringComparison.Ordinal).ToLowerInvariant();
 
+    // A non-empty string, or an array or object with one anywhere inside it. An array or object is read
+    // to its end, so a secret-named field nested inside a flagged one isn't reported again.
+    private static bool HoldsAString(ref Utf8JsonReader reader)
+    {
+        if (reader.TokenType is not (JsonTokenType.StartArray or JsonTokenType.StartObject))
+        {
+            return reader.TokenType == JsonTokenType.String && reader.ValueSpan.Length > 0;
+        }
+
+        var depth = reader.CurrentDepth;
+        var found = false;
+        while (reader.Read() && reader.CurrentDepth > depth)
+        {
+            found |= reader.TokenType == JsonTokenType.String && reader.ValueSpan.Length > 0;
+        }
+
+        return found;
+    }
+
     private static List<Finding> SecretInTestData(ConventionRule rule, RuleContext context)
     {
         var findings = new List<Finding>();
@@ -556,7 +627,7 @@ internal static partial class ConventionRules
 
                     var name = reader.GetString()!;
                     var line = 1 + bytes.AsSpan(0, (int)reader.TokenStartIndex).Count((byte)'\n');
-                    if (reader.Read() && reader.TokenType == JsonTokenType.String && reader.ValueSpan.Length > 0)
+                    if (reader.Read() && HoldsAString(ref reader))
                     {
                         findings.Add(new Finding(rule.Id, rule.Severity, relative, line, rule.Why, $"\"{name}\": [redacted]"));
                     }
