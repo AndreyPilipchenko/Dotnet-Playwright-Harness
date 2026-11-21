@@ -241,6 +241,62 @@ The reply ended with `-- shop-tests`, and no approval prompt appeared. File tool
 
 `claude -p` sessions started from inside another Claude Code session loaded no `CLAUDE.md` at all, not even plain text. So run this check from an ordinary terminal.
 
+## Sign in once per role (spike 2026-11-21, Windows, Chromium, Microsoft.Playwright 1.64.1, NUnit 5)
+
+Run against Toolshop (`sprint5-with-bugs`; UI `http://localhost:4200`, API `http://localhost:8091`):
+
+| Question | Result |
+|---|---|
+| API sign-in | `POST /users/login` with `{"email","password"}` returns `access_token` (a 337-character JWT), `token_type: bearer` and `expires_in: 15600000` |
+| Where the UI keeps the sign-in | **Session storage**, key `auth-token`, holding the same JWT the API returns. No cookies, nothing in local storage |
+| Storage state after a UI sign-in | `StorageStateAsync` wrote `{"cookies":[],"origins":[]}`. A new context opened with it was sent back to `/#/auth/login`. **Storage state doesn't carry a session-storage sign-in** |
+| API token through an init script | `context.AddInitScriptAsync("window.sessionStorage.setItem('auth-token', '<jwt>');")` before the first navigation: `/#/account` opened signed in ("My account") |
+| `StorageStatePath` naming a missing file | `NewContextAsync` throws `PlaywrightException: The specified storage state file does not exist: <path>` |
+| NUnit 5 `[Order]` | Obsolete (CS0618, an error under warnings-as-errors). Use `DependsOnTest` / `DependsOnFixture` |
+| Cookie and local-storage state (stand-in page through `RouteAsync`) | A cookie set by `document.cookie` and a `localStorage` item, saved with `StorageStateAsync`, were both present in a new context opened with `StorageStatePath` (`sid=abc|t1`) |
+
+Run-once hooks and per-test context options, checked on scaffolded projects. Each had three probe tests:
+one with a method attribute, one plain, and one whose `ContextOptions()` throws.
+
+| | NUnit 5 | xUnit v3 4.0.2 | MSTest v4 |
+|---|---|---|---|
+| Run-once hook | `[SetUpFixture]` in the root test namespace, `[OneTimeSetUp]` / `[OneTimeTearDown]` | `[assembly: AssemblyFixture(typeof(T))]`, `T : IAsyncLifetime` | `[AssemblyInitialize] static async Task X(TestContext)` / `[AssemblyCleanup]` on a `[TestClass] public static class` |
+| Hook order | An async setup (with a 500 ms delay) finished before the first `ContextOptions()`. Teardown ran after the last test | The same, also with a second test class running in parallel | The same |
+| Current test method inside `ContextOptions()` | `TestContext.CurrentContext.Test.MethodName` | `TestContext.Current.TestMethod?.MethodName` | `TestContext.TestName` |
+| Method attribute | `GetType().GetMethod(name)?.IsDefined(typeof(A), false)` was `true` only on the marked test, on all three frameworks | | |
+| `ContextOptions()` throws | Only that test failed, as "SetUp : System.InvalidOperationException : <message>". The others passed | Only that test failed: "XunitException: System.InvalidOperationException : <message>" | Only that test failed: "Initialization method …ContextSetup threw exception. System.InvalidOperationException: <message>" |
+
+**End to end (verified 2026-11-21, all three frameworks).** Each skeleton was scaffolded from the
+templates, with `Roles.cs`, `SignInOnce.cs`, `UiTest.Role` and `[SignedOut]`. It ran against a
+stand-in app, a PowerShell `HttpListener` with a cookie session and a local-storage token, using
+`BASE_URL` for the app's address.
+
+- **The roles:**
+  - `customer` signed in with `Role.ThroughApi`, a POST through `context.APIRequest`. That request sets
+    the context's cookies, so the saved state signs in.
+  - `shopper` signed in with `Role.ThroughLoginPage`.
+  - `broken` used `ThroughApi` with a wrong password (the API answered 401).
+- **The result:** 8 tests ran and 6 passed on every framework:
+  - the `customer` test
+  - the `shopper` test, with its local-storage token restored
+  - a `[SignedOut]` test inside the `customer` class, which saw "Signed out" and signed in through the
+    form
+  - a `[SignedOut]` test in a class with no role
+  - an API test
+  - the greeting test
+- **The two intended failures:**
+  - the `broken` test: "Role 'broken' could not sign in at the start of the run: API sign-in for
+    broken@x returned 401."
+  - a test with `Role => "typo"`: "Role 'typo' is not in Setup/Roles.cs, so it was never signed in."
+- **What the app's request log showed:**
+  - The `broken` role made one API call and never opened the login page. There is no runtime
+    fallback.
+  - `/login` was opened only by the `shopper` sign-in and by the form test.
+- **Two `dotnet test` runs at the same time** from the same output folder each gave 8 tests with 6
+  passed. Neither left an `.auth/<run-id>/` folder behind.
+- **A skeleton with no roles** builds with 0 warnings, its greeting test passes, and `check-conventions`
+  reports 0 failures.
+
 ## Traces of failed tests (verified 2026-11-08, Windows, Chromium)
 
 `UiTest` starts tracing when `TRACE_DIR` is set, and saves the zip only when the test failed. A project scaffolded from each template, with one passing and one failing test, left a zip for the failing test only.

@@ -41,6 +41,7 @@ and raise the mismatch.
 | A single test: what its body may contain, data rows, independence | test-methods |
 | An `<Domain>Api` or `<Domain>Db` class: requests, queries, seeding, cleanup | service-classes |
 | Whether code belongs in Utils or Config; secrets, retries, checks, connections, timeouts | utility-classes |
+| Signing in once per role and reusing the session; `Roles.cs`, `[SignedOut]`, a failed role sign-in | utility-classes |
 | An extension method or C# 14 extension block | extension-classes |
 | Starting a framework from nothing, or adapting the skeleton to an application | scaffold-framework |
 | Test attributes, categories, data rows, hooks, parallelism or `dotnet test` commands for NUnit, xUnit or MSTest | test-framework |

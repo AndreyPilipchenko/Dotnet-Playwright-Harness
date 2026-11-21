@@ -49,6 +49,7 @@ Run `secret-scan` on the folder. It reads HTML, TRX, Markdown, JSON, XML, text, 
 base64 and zip files too, so a trace counts. It prints the file and the kind of secret, never the value.
 
 - Add `--forbid-env NAME,NAME` to also search for the values of those variables, such as a test account's password. A value under 8 characters can't be searched for, and the command says so.
+- **Never publish `.auth/` folders.** They sit under the test output folder (`bin/…/.auth/<run-id>/`), hold the saved sessions of the signed-in roles, and are deleted at the end of a run. Copy results from `TestResults/`, never from `bin/`.
 - **Text inside a screenshot or video goes unnoticed.** Don't publish those from a run that signs in with a real account.
 - A finding means the report doesn't leave the machine or the run. Remove the secret at its source; never print it to confirm it.
 

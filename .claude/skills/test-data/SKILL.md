@@ -63,6 +63,11 @@ public sealed record OrderCase(string Product, int Quantity, string Status);
 | Environment | `BASE_URL`, passwords, API keys | environment variables, read through `Utils/Secrets` |
 | Runtime | a new user's email, a created order's id | generated per run (`UniqueData`) or returned by an Api action |
 
+A test that changes a signed-in account's own data (cart, profile, settings) creates its own user
+through the API, with a `UniqueData` email, instead of sharing a role's account with parallel tests
+([signed-in sessions](../utility-classes/references/signed-in-sessions.md#parallel-runs)). Role
+credentials are environment values: `<ROLE>_EMAIL` and `<ROLE>_PASSWORD`.
+
 ```csharp
 await checkout.SignInAndOpenOrdersAsync(Data.User.Email, Secrets.Get("SHOP_PASSWORD"));
 ```

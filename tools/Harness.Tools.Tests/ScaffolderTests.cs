@@ -17,10 +17,13 @@ public class ScaffolderTests
         "src/Acme.Shop.Framework/Acme.Shop.Framework.csproj",
         "src/Acme.Shop.Framework/Pages/GreetingPage.cs",
         "src/Acme.Shop.Framework/Utils/TestData.cs",
+        "src/Acme.Shop.Framework/Utils/SignedInSessions.cs",
         "resources/testData/GreetingTestData.json",
         "tests/Acme.Shop.Tests/Acme.Shop.Tests.csproj",
         "tests/Acme.Shop.Tests/Setup/UiTest.cs",
         "tests/Acme.Shop.Tests/Setup/ApiTest.cs",
+        "tests/Acme.Shop.Tests/Setup/Roles.cs",
+        "tests/Acme.Shop.Tests/Setup/SignInOnce.cs",
         "tests/Acme.Shop.Tests/Ui/GreetingTests.cs",
     ];
 
@@ -46,6 +49,115 @@ public class ScaffolderTests
         var csproj = File.ReadAllText(dir.Combine("tests/Acme.Shop.Tests/Acme.Shop.Tests.csproj"));
         Assert.Contains($"<{runnerProperty}>true</{runnerProperty}>", csproj, StringComparison.Ordinal);
         Assert.Contains(adapter, csproj, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RealTemplates_SignedInSessions_KeepsStateUnderTheOutputFolder()
+    {
+        using var dir = new TempDir();
+        Scaffolder.Run(Options("nunit", dir.Path));
+
+        var text = File.ReadAllText(dir.Combine("src/Acme.Shop.Framework/Utils/SignedInSessions.cs"));
+
+        Assert.All(
+            ["AppContext.BaseDirectory", "\".auth\"", "Guid.NewGuid()", "StorageStateAsync", "could not sign in at the start of the run", "ThroughApi", "ThroughLoginPage", "class SignedOutAttribute"],
+            s => Assert.Contains(s, text, StringComparison.Ordinal));
+        Assert.All([".Result", ".Wait()", "GetResult()"], s => Assert.DoesNotContain(s, text, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RealTemplates_SignedInSessions_KeepsTheWholeFailure_AndRefusesCollidingRoleNames()
+    {
+        // Review findings: the failure kept only its first line, and "a b" / "a_b" / "Admin" / "admin" shared one file.
+        using var dir = new TempDir();
+        Scaffolder.Run(Options("nunit", dir.Path));
+
+        var text = File.ReadAllText(dir.Combine("src/Acme.Shop.Framework/Utils/SignedInSessions.cs"));
+
+        Assert.Contains("ConcurrentDictionary<string, Exception?>", text, StringComparison.Ordinal);
+        Assert.Contains("ex.GetType().Name", text, StringComparison.Ordinal);
+        Assert.Contains("could not sign in at the start of the run: {Reason(failure)}\", failure)", text, StringComparison.Ordinal);
+        Assert.Contains("StringComparer.OrdinalIgnoreCase", text, StringComparison.Ordinal);
+        Assert.Contains("share the file name", text, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("nunit")]
+    [InlineData("xunit")]
+    [InlineData("mstest")]
+    public void RealTemplates_Roles_ApiExampleSignsInOnTheContextsOwnRequest(string framework)
+    {
+        // Review finding: an Api class built through ApiContext posts on a separate request context, so its cookies never reach the browser context.
+        using var dir = new TempDir();
+        Scaffolder.Run(Options(framework, dir.Path));
+
+        var text = File.ReadAllText(dir.Combine("tests/Acme.Shop.Tests/Setup/Roles.cs"));
+
+        Assert.Contains("AuthApi.SignInAsync(context.APIRequest,", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("new AuthApi(", text, StringComparison.Ordinal);
+        Assert.Contains("same origin", text, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("nunit", "[SetUpFixture]")]
+    [InlineData("xunit", "AssemblyFixture")]
+    [InlineData("mstest", "[AssemblyInitialize]")]
+    public void RealTemplates_SignInOnce_UsesTheFrameworksRunOnceHook(string framework, string marker)
+    {
+        using var dir = new TempDir();
+        Scaffolder.Run(Options(framework, dir.Path));
+
+        var text = File.ReadAllText(dir.Combine("tests/Acme.Shop.Tests/Setup/SignInOnce.cs"));
+
+        Assert.All([marker, "SignedInSessions.SaveAllAsync", "Roles.All", "DeleteAll", "UiTest.BaseContextOptions()"], s => Assert.Contains(s, text, StringComparison.Ordinal));
+        if (framework == "nunit")
+        {
+            // A [SetUpFixture] covers only its own namespace and those below it.
+            Assert.Contains("namespace Acme.Shop.Tests;", text, StringComparison.Ordinal);
+        }
+    }
+
+    [Theory]
+    [InlineData("nunit")]
+    [InlineData("xunit")]
+    [InlineData("mstest")]
+    public void RealTemplates_UiTest_ChoosesTheRolesState(string framework)
+    {
+        using var dir = new TempDir();
+        Scaffolder.Run(Options(framework, dir.Path));
+
+        var text = File.ReadAllText(dir.Combine("tests/Acme.Shop.Tests/Setup/UiTest.cs"));
+
+        Assert.All(["protected virtual string? Role", "SignedInSessions.PathFor(", "SignedOutAttribute", "public static BrowserNewContextOptions BaseContextOptions()"], s => Assert.Contains(s, text, StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("nunit")]
+    [InlineData("xunit")]
+    [InlineData("mstest")]
+    public void RealTemplates_Roles_ShipsEmpty(string framework)
+    {
+        using var dir = new TempDir();
+        Scaffolder.Run(Options(framework, dir.Path));
+
+        var lines = File.ReadAllLines(dir.Combine("tests/Acme.Shop.Tests/Setup/Roles.cs"));
+
+        Assert.Contains(lines, l => l.Contains("All { get; } = [];", StringComparison.Ordinal));
+        Assert.All(lines.Where(l => l.Contains("Role.Through", StringComparison.Ordinal)), l => Assert.StartsWith("//", l.TrimStart(), StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("Setup/Roles.cs", "tests/Acme.Shop.Tests/Setup/Roles.cs")]
+    [InlineData("Setup/SignInOnce.cs", "tests/Acme.Shop.Tests/Setup/SignInOnce.cs")]
+    [InlineData("Utils/SignedInSessions.cs", "src/Acme.Shop.Framework/Utils/SignedInSessions.cs")]
+    public void ScaffoldOnly_RendersEachSignInFile(string only, string expected)
+    {
+        // Projects scaffolded before sign-in reuse add these files one at a time.
+        using var dir = new TempDir();
+
+        var written = Scaffolder.Run(Options("mstest", dir.Path) with { Only = only });
+
+        Assert.Equal([expected], written);
     }
 
     [Theory]

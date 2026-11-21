@@ -1,6 +1,6 @@
 ---
 name: utility-classes
-description: Use when deciding whether code belongs in Utils or Config, or when writing or reviewing a class there in a Playwright C# framework built with this harness - test data loading, secrets and environment variables, API request contexts, database connections, unique values, retries and polling, value checks, named timeouts, logging, or any try/catch or delay that seems necessary.
+description: Use when deciding whether code belongs in Utils or Config, or when writing or reviewing a class there in a Playwright C# framework built with this harness - test data loading, secrets and environment variables, API request contexts, database connections, unique values, retries and polling, value checks, named timeouts, logging, signing in once per role and reusing the session (Roles.cs, SignedInSessions, [SignedOut]), or any try/catch or delay that seems necessary.
 ---
 
 # Utility and config classes
@@ -33,6 +33,7 @@ Helpers. Reading an environment variable, or polling until something is true, is
 | `Utils/UniqueData` | Values unique per test and run | `UniqueData.Email("buyer")` |
 | `Utils/Checks` | Compare values that have no web-first assertion | `Checks.Equal(expected, actual, "orders for Pliers")` |
 | `Utils/Retry` | Bounded polling for eventually consistent arrangement | below |
+| `Utils/SignedInSessions` | Sign each role in once per run and serve its saved storage state; `Role`, `[SignedOut]` (from the template) | [signed-in sessions](references/signed-in-sessions.md) |
 | `Utils/Extensions/` | Extension members on Playwright and .NET types | extension-classes |
 | `Config/Timeouts` | Named time budgets for slow surfaces | `Timeouts.SlowSurface` |
 
