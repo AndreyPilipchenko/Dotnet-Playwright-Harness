@@ -319,4 +319,6 @@ Fixes made because of the pilot:
 | B (NUnit) | Add an API test base to an older project, and prove a test can still fail | `scaffold --only Setup/ApiTest.cs` added the missing file. The test was broken inside the project and restored, not in a scratch copy, so routing was fixed (`automate-test`, break it once alone) |
 | C (MSTest) | The same as B, after the routing fix | `scaffold --only` again. The break ran in `scratch-copy --to …`, went red on the changed value, and `scratch-copy --remove` deleted the copy in the live session. The project was never edited, then green ×2 |
 
-**Not verified:** the rerun guard accepting `BASE_URL` or `API_URL` set in the command, inside a live session. It is verified by unit tests and a direct run only.
+| P8 (NUnit, Sonnet, no `BASE_URL` in the environment) | 1: "Run the login tests". 2, continuing the session: "The app runs at http://localhost:4200 …" | The first run failed with "Cannot navigate to invalid URL". The rerun `$env:BASE_URL = '…'; $env:API_URL = '…'; dotnet test …` was allowed and passed. That inline setting was the only difference the guard counts, since the results folder and the chained `"EXIT $LASTEXITCODE"` are ignored. Before the rerun, the session had already said that setting `BASE_URL` in the command makes it a different run |
+
+Every acceptance item has now been exercised in a live session.
