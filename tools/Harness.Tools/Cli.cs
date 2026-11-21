@@ -33,7 +33,8 @@ internal static class Cli
                                  --root <dir>                      (default: current directory)
                                  --templates <dir>                 (default: found above the tool)
           install           Record .harness/project.json and merge the harness hooks into
-                               .claude/settings.json (user entries are kept). Safe to re-run:
+                               .claude/settings.json (user entries are kept), and add the
+                               harness import line to CLAUDE.md. Safe to re-run:
                                  --root <dir>                      (default: current directory)
                                  --framework <nunit|xunit|mstest>  (default: from project.json)
                                  --name <Name>                     (default: from project.json or folder)
@@ -125,6 +126,14 @@ internal static class Cli
                 template));
             stdout.WriteLine($"Project settings: {result.ProjectJson}");
             stdout.WriteLine($"Hooks: {result.HarnessHandlers} harness hooks merged into {result.Settings} ({result.UserHandlers} of your own kept).");
+            stdout.WriteLine(result.ClaudeMd switch
+            {
+                ClaudeMdChange.Created => "CLAUDE.md: created",
+                ClaudeMdChange.Appended => "CLAUDE.md: harness import line added",
+                ClaudeMdChange.Unchanged => "CLAUDE.md: already imports the harness",
+                ClaudeMdChange.NotUtf8 => $"CLAUDE.md: not UTF-8, left unchanged. Save it as UTF-8 and re-run setup, or add the line {ClaudeMd.ImportLine} by hand.",
+                _ => $"CLAUDE.md: could not be written, left unchanged. Add the line {ClaudeMd.ImportLine} by hand.",
+            });
             return ExitCodes.Ok;
         }
         catch (InstallException ex)

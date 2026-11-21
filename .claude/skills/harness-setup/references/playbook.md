@@ -25,6 +25,14 @@ every test.
 The script copies the payload, builds the tool, writes `.harness/project.json` and merges the harness
 hooks into `.claude/settings.json`. Your own settings entries are kept.
 
+It also makes the project's root `CLAUDE.md` import the harness instructions with one line,
+`@.harness/templates/CLAUDE.harness.md`. If there is no `CLAUDE.md`, it creates one. If there is one,
+it appends the line and leaves the rest of the text alone. The output says which happened. A
+`CLAUDE.md` that is not UTF-8, for example UTF-16 written by `>` in Windows PowerShell 5.1, or one that
+can't be written, is left unchanged and reported. Ask the user to save it as UTF-8 or add the line by
+hand. Put the
+team's own rules in `CLAUDE.md`, never in the imported file, because updates replace that file.
+
 **After cloning a project** where the harness is already committed, run `.harness/setup.ps1`. It only
 builds the tool and re-merges the hooks. Until it runs, the hooks fail open and guard nothing.
 
@@ -48,6 +56,9 @@ Or `scripts/update.ps1 -Target <project>` from the harness repository.
 **Conflicts.** For each `.harness-new` file, compare it with your file and show the user the
 differences. Keep what they decide, then delete the `.harness-new` file. Your merged file still counts
 as changed locally, so a later update that touches it reports a conflict again.
+
+The harness instructions in `.harness/templates/CLAUDE.harness.md` are refreshed like any other payload
+file. The import line in `CLAUDE.md` is already there, so the update leaves `CLAUDE.md` unchanged.
 
 **Files a newer harness adds to the skeleton.** An update refreshes the payload, never your project's
 code. When a skill or `check-conventions` names a skeleton file the project lacks (such as
@@ -93,4 +104,5 @@ There is no uninstall command, because the install is ordinary files in git.
 
 1. If the install or update is committed: `git revert <that commit>`. The user decides and runs it.
 2. If it isn't committed: show `git status --short`. Undoing it discards work, so confirm with the user which files to restore.
-3. Restart Claude Code.
+3. Delete the line `@.harness/templates/CLAUDE.harness.md` from `CLAUDE.md`, or the whole file if the install created it.
+4. Restart Claude Code.

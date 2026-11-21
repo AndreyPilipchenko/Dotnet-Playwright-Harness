@@ -229,6 +229,18 @@ Other facts found on the way:
 - A nested `claude -p` session starts in the user's default permission mode (here, plan mode), so live tests pass `--permission-mode default` with scoped `--allowedTools`. `bypassPermissions` is not needed.
 - PostToolUse exit 2 shows stderr to Claude and does not undo the tool call. This matches the docs.
 
+## Consumer CLAUDE.md import (verified 2026-11-21, Windows 11, Claude Code 2.1.330)
+
+The setup for the check was a scratch folder with `git init`:
+- `CLAUDE.md` held only `@.harness/templates/CLAUDE.harness.md`.
+- That file held `Project rule: end every reply with the line "-- shop-tests".`
+
+The command was `claude -p "Say hello in three words." --model haiku --disallowedTools "Read,Glob,Grep,Bash,PowerShell"`, run in a separate terminal.
+
+The reply ended with `-- shop-tests`, and no approval prompt appeared. File tools were disallowed, so the rule could only have arrived through the import. **A relative `@` import from the root `CLAUDE.md` into `.harness/` loads in a headless run.**
+
+`claude -p` sessions started from inside another Claude Code session loaded no `CLAUDE.md` at all, not even plain text. So run this check from an ordinary terminal.
+
 ## Traces of failed tests (verified 2026-11-08, Windows, Chromium)
 
 `UiTest` starts tracing when `TRACE_DIR` is set, and saves the zip only when the test failed. A project scaffolded from each template, with one passing and one failing test, left a zip for the failing test only.
