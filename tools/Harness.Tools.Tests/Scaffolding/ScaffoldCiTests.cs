@@ -205,6 +205,119 @@ public partial class ScaffoldCiTests
         Assert.Contains("ci-summary", action, StringComparison.Ordinal);
     }
 
+    private static string Nightly(TempDir dir) => File.ReadAllText(dir.Combine(".github/workflows/nightly.yml"));
+
+    private static string Smoke(TempDir dir) => File.ReadAllText(dir.Combine(".github/workflows/smoke.yml"));
+
+    [Fact]
+    public void Default_RendersAChromiumOnlyNightlyMatrix()
+    {
+        using var dir = Project();
+
+        var (code, _, err) = Scaffold(dir);
+
+        Assert.True(code == ExitCodes.Ok, err);
+        Assert.Contains("browser: [chromium]", Nightly(dir), StringComparison.Ordinal);
+        Assert.Contains("BROWSER: chromium", Smoke(dir), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Browsers_RenderTheMatrixInOrder()
+    {
+        using var dir = Project();
+
+        var (code, _, err) = Run("--root", dir.Path, "--templates", Templates, "--browsers", "webkit,firefox");
+
+        Assert.True(code == ExitCodes.Ok, err);
+        Assert.Contains("browser: [webkit, firefox]", Nightly(dir), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Browsers_AreTrimmedAndLowerCased()
+    {
+        using var dir = Project();
+
+        var (code, _, err) = Run("--root", dir.Path, "--templates", Templates, "--browsers", " Firefox , WEBKIT ");
+
+        Assert.True(code == ExitCodes.Ok, err);
+        Assert.Contains("browser: [firefox, webkit]", Nightly(dir), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Smoke_RunsOnTheFirstBrowser()
+    {
+        using var dir = Project();
+
+        Run("--root", dir.Path, "--templates", Templates, "--browsers", "firefox,chromium");
+
+        var smoke = Smoke(dir);
+        Assert.Contains("BROWSER: firefox", smoke, StringComparison.Ordinal);
+        Assert.Contains("browser: firefox", smoke, StringComparison.Ordinal);
+        Assert.DoesNotContain("chromium", smoke, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("edge")]
+    [InlineData("chromium,chromium")]
+    [InlineData("Chromium, chromium")]
+    [InlineData("")]
+    [InlineData(",")]
+    [InlineData("chromium,,firefox")]
+    public void BadBrowsers_AreAUsageError_AndWriteNothing(string browsers)
+    {
+        using var dir = Project();
+
+        var (code, _, err) = Run("--root", dir.Path, "--templates", Templates, "--browsers", browsers);
+
+        Assert.Equal(ExitCodes.Usage, code);
+        Assert.Contains("chromium, firefox, webkit", err, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(dir.Combine(".github")));
+    }
+
+    [Fact]
+    public void Nightly_IsAFailSlowMatrix_WithOneArtifactPerBrowser()
+    {
+        using var dir = Project();
+        Run("--root", dir.Path, "--templates", Templates, "--browsers", "chromium,firefox,webkit");
+
+        var nightly = Nightly(dir);
+
+        Assert.Contains("fail-fast: false", nightly, StringComparison.Ordinal);
+        Assert.Contains("BROWSER: ${{ matrix.browser }}", nightly, StringComparison.Ordinal);
+        Assert.Contains("browser: ${{ matrix.browser }}", nightly, StringComparison.Ordinal);
+        Assert.Contains("label: regression-${{ matrix.browser }}", nightly, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Reports_PassOneRunPerChosenBrowser_EvenOneWithoutResults()
+    {
+        // Review finding: looping over the downloaded folders dropped a browser whose job failed before uploading.
+        // Looping over the chosen browsers keeps it, and the dashboard says "No results from: regression-<browser>".
+        using var dir = Project();
+        Run("--root", dir.Path, "--templates", Templates, "--browsers", "chromium,webkit");
+
+        var nightly = Nightly(dir).ReplaceLineEndings("\n");
+
+        Assert.Contains("pattern: results-regression-*", nightly, StringComparison.Ordinal);
+        Assert.Contains("for browser in chromium webkit; do", nightly, StringComparison.Ordinal);
+        Assert.Contains("runs+=(--run \"regression-$browser=artifacts/results-regression-$browser\")", nightly, StringComparison.Ordinal);
+        Assert.DoesNotContain("artifacts/results-regression-*/", nightly, StringComparison.Ordinal);
+        Assert.Contains("dashboard \"${runs[@]}\" --out site/index.html", nightly, StringComparison.Ordinal);
+        Assert.Contains("tracker --results artifacts --out site/tracker.html", nightly, StringComparison.Ordinal);
+        Assert.DoesNotContain("name: results-regression\n", nightly, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Install_KeepsWithDeps()
+    {
+        using var dir = Project();
+        Scaffold(dir);
+
+        var setup = File.ReadAllText(dir.Combine(".github/actions/setup-harness/action.yml"));
+
+        Assert.Contains("playwright.ps1 install --with-deps $env:PLAYWRIGHT_BROWSER", setup, StringComparison.Ordinal);
+    }
+
     [GeneratedRegex(@"(?m)^\s*(?:- )?uses:\s*(\S+)")]
     private static partial Regex UsesLine();
 }

@@ -159,4 +159,4 @@ Spike these and record them in the matrix before you rely on them:
 - That `[NonParallelizable]`, `[Collection]` with parallelism off and `[DoNotParallelize]` really serialize. So far only compiling and passing was checked.
 - Class-level setup: `[OneTimeSetUp]`, `IClassFixture<T>`, `[ClassInitialize]`.
 - Data from a source method: `TestCaseSource`, `MemberData`, `DynamicData`.
-- Firefox, WebKit, Linux, and SDK versions other than 10.
+- SDK versions other than 10, and macOS. Firefox and WebKit are verified on Windows and Linux for the skeleton (framework-matrix, "Firefox and WebKit"), but not yet with real navigation.

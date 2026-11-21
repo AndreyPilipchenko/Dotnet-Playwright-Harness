@@ -69,11 +69,14 @@ jobs:
       fail-fast: false
       matrix:
         framework: [nunit, xunit, mstest]
+        browser: [chromium, firefox, webkit]
+    name: skeleton (${{ matrix.framework }}, ${{ matrix.browser }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       PROJECT: ${{ github.workspace }}/../generated
       FRAMEWORK: ${{ matrix.framework }}
+      BROWSER: ${{ matrix.browser }}
     steps:
       - uses: actions/checkout@v7
 
@@ -91,10 +94,10 @@ jobs:
         working-directory: ${{ env.PROJECT }}
         run: dotnet build -c Release --nologo -v quiet
 
-      - name: Install Chromium and its system libraries
+      - name: Install the browser and its system libraries
         working-directory: ${{ env.PROJECT }}
         shell: pwsh
-        run: ./tests/Acme.Shop.Tests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+        run: ./tests/Acme.Shop.Tests/bin/Release/net10.0/playwright.ps1 install --with-deps $env:BROWSER
 
       - name: Run the sample test
         working-directory: ${{ env.PROJECT }}
@@ -104,4 +107,4 @@ jobs:
         if: ${{ !cancelled() }}
         env:
           REPO: ${{ github.workspace }}
-        run: dotnet run --project "$REPO/tools/Harness.Tools/Harness.Tools.csproj" -c Release --no-build -- ci-summary --results "$PROJECT/TestResults/skeleton" --heading "Skeleton on $FRAMEWORK"
+        run: dotnet run --project "$REPO/tools/Harness.Tools/Harness.Tools.csproj" -c Release --no-build -- ci-summary --results "$PROJECT/TestResults/skeleton" --heading "Skeleton on $FRAMEWORK, $BROWSER"

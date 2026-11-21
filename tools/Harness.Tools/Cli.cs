@@ -32,6 +32,8 @@ internal static class Cli
                                Existing files are never overwritten:
                                  --root <dir>                      (default: current directory)
                                  --templates <dir>                 (default: found above the tool)
+                                 --browsers <list>                 nightly browsers, e.g. chromium,firefox,webkit;
+                                                                   smoke runs on the first (default chromium)
           install           Record .harness/project.json and merge the harness hooks into
                                .claude/settings.json (user entries are kept), and add the
                                harness import line to CLAUDE.md. Safe to re-run:
@@ -194,10 +196,24 @@ internal static class Cli
 
     private static int RunScaffoldCi(string[] args, TextWriter stdout, TextWriter stderr)
     {
-        if (!TryParseOptions(args, ["--root", "--templates"], out var values, out var error))
+        if (!TryParseOptions(args, ["--root", "--templates", "--browsers"], out var values, out var error))
         {
             stderr.WriteLine(error);
             return ExitCodes.Usage;
+        }
+
+        IReadOnlyList<string>? browsers = null;
+        if (values.TryGetValue("--browsers", out var browserList))
+        {
+            try
+            {
+                browsers = Scaffolder.ParseBrowsers(browserList);
+            }
+            catch (ScaffoldException ex)
+            {
+                stderr.WriteLine(ex.Message);
+                return ExitCodes.Usage;
+            }
         }
 
         var root = Path.GetFullPath(values.GetValueOrDefault("--root") ?? Directory.GetCurrentDirectory());
@@ -229,7 +245,7 @@ internal static class Cli
 
         try
         {
-            var written = Scaffolder.RunCi(new ScaffoldOptions(framework, name, targetFramework, root, templates));
+            var written = Scaffolder.RunCi(new ScaffoldOptions(framework, name, targetFramework, root, templates) { Browsers = browsers });
             stdout.WriteLine($"Wrote {written.Count} files into {root}:");
             foreach (var file in written)
             {

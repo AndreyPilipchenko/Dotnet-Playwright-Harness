@@ -11,10 +11,10 @@ Each spike ran two tests against `Page.SetContentAsync`, one passing and one fai
 
 Not verified yet:
 
-- Linux
 - SDK 8 and 9
-- Firefox and WebKit
 - parallel execution at scale
+
+Firefox and WebKit, and the skeleton on Linux, were verified later. See "Firefox and WebKit" below and "GitHub Actions".
 
 ## Packages (pinned in `templates/build/Directory.Packages.props`)
 
@@ -325,7 +325,33 @@ Latest releases, read with `gh` from each repository. The templates pin the majo
 - `playwright.ps1 install --with-deps` is listed in the CLI's help (`install --help`). It installs system packages, so CI uses it and local runs don't.
 - Every shell command in the rendered workflows passed on Windows for all three frameworks, in a project made with `setup.ps1`, `scaffold` and `scaffold-ci`.
 - This repository's own workflow passed on GitHub Actions (run 42502518073): tool build, tests and `validate-skills` on `ubuntu-latest` and `windows-latest`, `Test-Setup` on both PowerShell editions, and each framework's skeleton scaffolded, built and run on `ubuntu-latest`. So Linux and `install --with-deps chromium` are verified for the skeleton.
-- **Not verified:** the workflows that `scaffold-ci` generates on GitHub Actions (including an empty `BASE_URL` on Linux and the baseline cache), `actionlint`, Firefox and WebKit. All 16 YAML files parse.
+- **Not verified:** the workflows that `scaffold-ci` generates on GitHub Actions (including an empty `BASE_URL` on Linux and the baseline cache), and `actionlint`. All 16 YAML files parse. Firefox and WebKit: see the next section.
+
+## Firefox and WebKit (spike 2026-11-21, Microsoft.Playwright 1.64.1)
+
+Browser builds installed by `playwright.ps1 install`, the same on both systems:
+
+- Firefox 157.0 (playwright firefox v1555)
+- WebKit 27.2 (playwright webkit v2370)
+- Chromium: Chrome for Testing and the headless shell 156.0.8078.4 (v1248)
+
+Each framework's skeleton was scaffolded, built with 0 warnings, and its greeting test run with `BROWSER` set to each browser. The greeting test uses `SetContentAsync`, the context options from `UiTest` and a web-first `Expect`.
+
+| | Windows 11 (host, SDK 10.0.403) | Linux: Ubuntu 24.04.5 in `mcr.microsoft.com/dotnet/sdk:10.0` (SDK 10.0.404, pwsh 7.6.10) |
+|---|---|---|
+| Install | `install firefox webkit` | `install --with-deps chromium firefox webkit`, as root, exit 0 |
+| NUnit: chromium, firefox, webkit | 1/1 passed each, exit 0 | 1/1 passed each, exit 0 |
+| xUnit v3: chromium, firefox, webkit | 1/1 passed each, exit 0 | 1/1 passed each, exit 0 |
+| MSTest v4: chromium, firefox, webkit | 1/1 passed each, exit 0 | 1/1 passed each, exit 0 |
+
+- **Traces (Windows):** with the expected greeting changed so that the test fails, and `TRACE_DIR` set, each framework left one trace zip on Firefox and on WebKit, exit 2.
+  - Both browsers recorded the same actions and 4 DOM snapshots.
+  - WebKit recorded 1 screencast frame against Firefox's 31, because the page doesn't change after it loads. So its zip is 3–4 KB against 45–51 KB.
+- **Nightly reports (Linux):**
+  - `dashboard --run regression-chromium=… --run regression-firefox=… --run regression-webkit=…` exited 0, and the page names each run.
+  - The `scaffold-ci` nightly loop builds one `--run regression-<browser>=artifacts/results-regression-<browser>` per chosen browser. A browser with no results folder is still passed, and the dashboard lists it under "No results from" (an existing behaviour of `dashboard`; it fails only when every run is empty).
+- The Linux container mirrors `ubuntu-latest`, but it isn't the runner. The repository's CI skeleton matrix (framework × browser) is the check on the runner itself.
+- **Not verified:** real navigation on Firefox and WebKit (the greeting test sets content), Windows `--with-deps`, macOS, and branded channels.
 
 ## Probe test and scratch copy (verified 2026-11-08)
 

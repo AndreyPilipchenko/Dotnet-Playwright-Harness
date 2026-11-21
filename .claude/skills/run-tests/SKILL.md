@@ -28,7 +28,7 @@ dotnet test --project tests/<Name>.Tests/<Name>.Tests.csproj --report-trx --resu
 | Part of a name | `--filter "FullyQualifiedName~OrdersTests"` | not used: `--filter-method "*X"` also matches every name ending in X |
 
 - Add `--no-build` when the brief already ran `dotnet build`.
-- Browser: the `BROWSER` (`chromium`, `firefox`, `webkit`) and `HEADED` environment variables. After a build or a Playwright update, install the browser once with `tests/<Name>.Tests/bin/Debug/<tfm>/playwright.ps1 install chromium`.
+- Browser: the `BROWSER` (`chromium`, `firefox`, `webkit`) and `HEADED` environment variables. After a build or a Playwright update, install the browser once with `tests/<Name>.Tests/bin/Debug/<tfm>/playwright.ps1 install chromium` (or `firefox`, `webkit`, several at once). On a Linux machine add `--with-deps` for the system libraries. All three browsers are verified for the skeleton on every framework, on Windows and Linux, not yet with real navigation (framework-matrix).
 
 ## Exit codes and what counts as green
 

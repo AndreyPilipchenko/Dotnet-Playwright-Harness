@@ -86,7 +86,7 @@ The steps are in [signed-in sessions](../../utility-classes/references/signed-in
 - **Application URL:** tests read the `BASE_URL` environment variable (`Setup/UiTest.cs`). Ask for the test environment's URL. Never assume that production is acceptable.
 - **API URL:** when the API has its own origin, Api classes read `API_URL` (`Utils/ApiContext`); unset or empty, they use `BASE_URL`. Ask whether the API shares the app's origin.
 - **Secrets:** the framework reads them with `Secrets.Get("<NAME>")`, from the environment, and fails loudly when one is missing. Give the user the names to set. The harness denies reading `.env` files. A signed-in role needs `<ROLE>_EMAIL` and `<ROLE>_PASSWORD`, for example `CUSTOMER_EMAIL`.
-- **Browser:** `BROWSER` (`chromium`, `firefox` or `webkit`) and `HEADED=1`. Install it once after a build: `tests/<Name>.Tests/bin/Debug/<tfm>/playwright.ps1 install chromium`.
+- **Browser:** `BROWSER` (`chromium`, `firefox` or `webkit`) and `HEADED=1`. Install it once after a build: `tests/<Name>.Tests/bin/Debug/<tfm>/playwright.ps1 install chromium` (or `firefox`, `webkit`; add `--with-deps` on Linux). Which browsers CI runs nightly is asked when the workflows are generated (ci-pipeline).
 - **Page observation:** automate-test and execute-test copy `cli.config.json` with the app's origin when they need it. Nothing to do here.
 
 ## 4. Check readiness
