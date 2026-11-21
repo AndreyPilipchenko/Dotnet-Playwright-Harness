@@ -311,4 +311,12 @@ Fixes made because of the pilot:
 
 **Fixed (api-test-base):** API-only test classes derive from the new browserless `ApiTest` (adapter `PlaywrightTest`), so they start no browser. Spiked on all three frameworks with Chromium not installed: a probe test in `Api/` calling `Playwright.APIRequest.NewContextAsync()` built with warnings as errors and passed on NUnit, xUnit v3 and MSTest (`--filter "Name=..."` on NUnit and MSTest, `--filter-class` on xUnit). `ApiTest` needs no code of its own; the assembly-level parallelism attributes in `UiTest.cs` still apply.
 
-**Not verified:** `scratch-copy --remove` and the new rerun-guard behaviour inside a live session (verified by unit tests and a direct run only); stage 6 on xUnit; maintain-test handing a product defect to bug-report in one session.
+**Follow-up sessions (2026-11-21, Claude Code 2.1.330, same setup):**
+
+| Session | Prompt | Result |
+|---|---|---|
+| A (xUnit) | A test fails after a planted product defect (a product description changed) | maintain-test with failure-investigator classified it as a product defect. It handed over to bug-report in the same session (`BUG-002`), the test got the `bug:BUG-002` trait and stayed red, and traceability was clean. This is stage 6 on xUnit |
+| B (NUnit) | Add an API test base to an older project, and prove a test can still fail | `scaffold --only Setup/ApiTest.cs` added the missing file. The test was broken inside the project and restored, not in a scratch copy, so routing was fixed (`automate-test`, break it once alone) |
+| C (MSTest) | The same as B, after the routing fix | `scaffold --only` again. The break ran in `scratch-copy --to …`, went red on the changed value, and `scratch-copy --remove` deleted the copy in the live session. The project was never edited, then green ×2 |
+
+**Not verified:** the rerun guard accepting `BASE_URL` or `API_URL` set in the command, inside a live session. It is verified by unit tests and a direct run only.

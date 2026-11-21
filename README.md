@@ -38,7 +38,7 @@ Then start Claude Code in that project and ask for what you want, for example "c
 
 The repository's CI builds the tool and runs its tests on Ubuntu and Windows, checks the setup scripts on both PowerShell editions, and generates and runs a skeleton for each framework on Ubuntu. Only Chromium is verified. Allure on xUnit and MSTest uses preview packages.
 
-The workflows that `scaffold-ci` generates have been run command by command on Windows, but not yet on GitHub Actions. A full pilot on a real application has not been done yet.
+The workflows that `scaffold-ci` generates have been run command by command on Windows, but not yet on GitHub Actions. An acceptance pilot ran every lifecycle stage against a local sample shop application, on all three frameworks, in fresh Claude Code sessions. See "Acceptance pilot" in the [framework matrix](docs/framework-matrix.md).
 
 ## Documentation
 
