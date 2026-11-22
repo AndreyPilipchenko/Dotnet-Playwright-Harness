@@ -18,7 +18,8 @@ dotnet .harness/tools/bin/Harness.Tools.dll scaffold-ci --browsers chromium,fire
 ```
 
 Without `--browsers` it is Chromium only. Never pick the browsers yourself when the user hasn't
-answered: ask. An unknown, repeated or empty name is a usage error (exit 64) that writes nothing.
+answered: ask. Spaces around names and capital letters are fine (`" Firefox , webkit "` works).
+An unknown, repeated or empty name is a usage error (exit 64) that writes nothing.
 It reads the framework and name from `.harness/project.json`, and never overwrites an existing file.
 
 | File under `.github/` | Runs | Does |
