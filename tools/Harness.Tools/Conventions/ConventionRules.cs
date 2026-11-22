@@ -159,6 +159,9 @@ internal static partial class ConventionRules
         new("test-logic", Severity.Fail,
             "A test is a straight line of steps. Branches and loops belong in data (one row per case) or in helpers.",
             TestsOnly, TestLogic),
+        new("test-without-verify", Severity.Warn,
+            "A test that only acts proves nothing: it passes when the product ignores the action. Call at least one Verify* method.",
+            TestsOnly, TestWithoutVerify),
         new("async-discipline", Severity.Fail,
             "Blocking on async code (.Result, .Wait(), GetResult()) or async void deadlocks and loses exceptions.",
             AnyLayer, AsyncDiscipline),
@@ -465,8 +468,15 @@ internal static partial class ConventionRules
     private static IEnumerable<RuleHit> TestLogic(SourceFile f, RuleContext _) =>
         f.Root.DescendantNodes()
             .Where(n => n is IfStatementSyntax or SwitchStatementSyntax or ForStatementSyntax or CommonForEachStatementSyntax
-                or WhileStatementSyntax or DoStatementSyntax or ConditionalExpressionSyntax or SwitchExpressionSyntax)
+                or WhileStatementSyntax or DoStatementSyntax or ConditionalExpressionSyntax or SwitchExpressionSyntax
+                || n.IsKind(SyntaxKind.CoalesceExpression))
             .Select(Hit);
+
+    private static IEnumerable<RuleHit> TestWithoutVerify(SourceFile f, RuleContext _) =>
+        f.TestMethods
+            .Where(m => !m.DescendantNodes().OfType<InvocationExpressionSyntax>()
+                .Any(c => Name(c).StartsWith("Verify", StringComparison.Ordinal)))
+            .Select(m => new RuleHit(LineOf(m.Identifier)));
 
     private static IEnumerable<RuleHit> AsyncDiscipline(SourceFile f, RuleContext _)
     {

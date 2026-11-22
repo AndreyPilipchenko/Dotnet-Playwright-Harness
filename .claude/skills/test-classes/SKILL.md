@@ -21,8 +21,9 @@ hook attributes for each framework.
 
 ## 2. Layout
 
-The canonical order, shown for each framework (all three are from verified examples). Use the one
-in `.harness/project.json`.
+The canonical order, from verified examples. NUnit and xUnit v3 are shown because their hooks differ.
+MSTest v4 is the NUnit form with `[TestClass]` on the class, `[TestMethod]` + `[DataRow]`,
+`[TestCategory]`, and `[TestInitialize]`/`[TestCleanup]` (test-framework Quick map).
 
 **NUnit**
 
@@ -89,38 +90,6 @@ public class OrdersTests : UiTest
 }
 ```
 
-**MSTest v4**: `[TestClass]` on the class.
-
-```csharp
-[TestClass]
-public class OrdersTests : UiTest
-{
-    private static readonly OrdersTestData Data = TestData.Load<OrdersTestData>("Orders");
-
-    private OrdersApi _orders = null!;
-
-    [TestMethod]
-    [DataRow("standard")]
-    [DataRow("express")]
-    [TestCategory("regression")]
-    public async Task ShowsNewOrderWithItsStatusAsync(string shipping) { /* see test-methods */ }
-
-    [TestMethod]
-    [TestCategory("smoke")]
-    public async Task RemovesADeletedOrderAsync() { /* see test-methods */ }
-
-    [TestInitialize]
-    public async Task CreateOrdersApiAsync() => _orders = await OrdersApi.CreateAsync(Playwright);
-
-    [TestCleanup]
-    public async Task CleanUpAsync()
-    {
-        await _orders.DeleteCreatedOrdersAsync();
-        await _orders.DisposeAsync();
-    }
-}
-```
-
 1. The `Data` field: `static readonly`, loaded from the paired file.
 2. Per-test service fields, in layer order (Apis, then Dbs, then Helpers): `private OrdersApi _orders = null!;`.
 3. The tests.
@@ -144,7 +113,8 @@ public class OrdersTests : UiTest
 
 ## 5. What a test class never contains
 
-- Locators, `Expect`/`Assert`, HTTP calls, `GotoAsync`, loops, `if`, `try`, console output. `[no-locator-in-test]` `[no-assertion-in-test]` `[no-http-in-test]` `[no-navigation-in-test]` `[test-logic]` `[no-try-outside-utils]` `[no-console-output]`
+- Anything a test body may not hold (locators, assertions, HTTP, navigation, logic, `try`, waits):
+  the canonical table is [test-methods §2](../test-methods/SKILL.md#2-the-body-is-business-calls-only). Console output is banned too. `[no-console-output]`
 - Skips of any kind: `Ignore`, `Explicit`, `Skip =`, commented-out tests. `[no-skipped-test]` A test that can't run in an environment is a CI category choice, not a skip.
 - Extension classes or helper methods. Shared steps go down a layer. `[extension-placement]`
 - Attributes from a second test framework. `[mixed-test-frameworks]`

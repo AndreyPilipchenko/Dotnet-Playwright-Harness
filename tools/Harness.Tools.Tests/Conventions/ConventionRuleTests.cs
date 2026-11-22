@@ -89,6 +89,10 @@ public class ConventionRuleTests
         { "test-logic", TestPath, "class LoginTests\n{\n    void X()\n    {\n        if (x) // <-\n        {\n        }\n    }\n}" },
         { "test-logic", TestPath, "class LoginTests\n{\n    void X()\n    {\n        foreach (var u in users) // <-\n        {\n        }\n    }\n}" },
         { "test-logic", TestPath, "class LoginTests\n{\n    void X()\n    {\n        var y = x ? 1 : 2; // <-\n    }\n}" },
+        { "test-logic", TestPath, "class LoginTests\n{\n    void X()\n    {\n        var y = x ?? \"default\"; // <-\n    }\n}" },
+
+        { "test-without-verify", TestPath, "public class LoginTests\n{\n    [Test]\n    public async Task LogsInAsync() // <-\n    {\n        await loginPage.LoginAsync(\"a\", \"b\");\n    }\n}" },
+        { "test-without-verify", TestPath, "public class LoginTests\n{\n    [Fact]\n    public Task LogsInAsync() => loginPage.LoginAsync(\"a\", \"b\"); // <-\n}" },
 
         { "async-discipline", PagePath, "class LoginPage\n{\n    string X() => _page.TitleAsync().Result; // <-\n}" },
         { "async-discipline", PagePath, "class LoginPage\n{\n    void X()\n    {\n        _page.ReloadAsync().Wait(); // <-\n    }\n}" },
@@ -154,7 +158,9 @@ public class ConventionRuleTests
         { "layer-boundary", PagePath, "using Acme.Framework.Utils;\nusing Microsoft.Playwright;\nclass LoginPage { }" },
         { "no-base-page", PagePath, "public sealed class LoginPage : IDisposable\n{\n}" },
         { "test-logic", SetupPath, "abstract class UiTest\n{\n    void X()\n    {\n        if (x)\n        {\n        }\n    }\n}" },
-        { "test-logic", TestPath, "class LoginTests\n{\n    void X()\n    {\n        var y = x ?? \"default\";\n    }\n}" },
+        { "test-logic", TestPath, "class LoginTests\n{\n    void X()\n    {\n        var y = x?.Name;\n    }\n}" },
+        { "test-without-verify", TestPath, "[TestClass]\npublic class LoginTests\n{\n    [TestMethod]\n    public async Task LogsInAsync()\n    {\n        await loginPage.LoginAsync(\"a\", \"b\");\n        await loginPage.VerifySignedInAsync();\n    }\n}" },
+        { "test-without-verify", TestPath, "public class LoginTests\n{\n    [Test]\n    public Task ShowsErrorAsync() => loginPage.VerifyErrorAsync(\"x\");\n\n    private Task HelperAsync() => Task.CompletedTask;\n}" },
         { "async-discipline", PagePath, "class LoginPage\n{\n    void X()\n    {\n        _page.Dialog += async (_, d) => await d.DismissAsync();\n        var r = response.Result;\n    }\n}" },
         { "async-naming", SetupPath, "abstract class UiTest : PageTest\n{\n    public override Task Setup() => Task.CompletedTask;\n}" },
         { "action-verify-separation", PagePath, "class LoginPage\n{\n    public Task VerifySavedAsync() => Expect(SavedMessage).ToBeVisibleAsync();\n\n    public Task SaveAsync() => SaveButton.ClickAsync();\n}" },

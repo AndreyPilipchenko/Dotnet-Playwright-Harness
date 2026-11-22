@@ -63,6 +63,7 @@ resources/testData/            <Feature>TestData.json, one per test class
 `Image`, `Icon`, `Checkbox`, `Radio`, `Dropdown`, `List`, `Table`, `Row`, `Cell`, `Form`,
 `Message`, `Tab`, `Card`, `Modal`, `Section`.
 
+- `Header` is a region at the top of a page or table (`PageHeader`, `ColumnHeader`); `Heading` is a title, h1–h6 (`OrdersHeading`).
 - Name the element kind, not its ARIA role. An alert is an `ErrorMessage`; a combobox is a `CountryDropdown`.
 - `Input` covers every fillable control, including text areas.
 - Adding a suffix changes this file and the checker together; never invent one in a single page.
@@ -72,7 +73,9 @@ resources/testData/            <Feature>TestData.json, one per test class
 ## 3. Class anatomy
 
 Every business class uses this order and the two section comments exactly as written (checked
-in review). Members are separated by exactly one blank line. `[anatomy-spacing]`
+in review). Members are separated by exactly one blank line. `[anatomy-spacing]` Business and
+Utils classes are `sealed` (or `static`), because nothing derives from them (no base page). Test
+classes are not sealed.
 
 1. Constants (`Url`), then private readonly fields (`_page`).
 2. Constructor. It checks its arguments and stores them.
@@ -123,10 +126,10 @@ public sealed class LoginPage
 }
 ```
 
-The test that uses it, with its data. Only the attributes differ between frameworks; use the one
-in `.harness/project.json`.
-
-**NUnit**
+The test that uses it, with its data, in NUnit. For xUnit v3 or MSTest v4 (the one in
+`.harness/project.json`), only the attributes change: `[Fact]`/`[Trait("Category", …)]` or
+`[TestClass]` + `[TestMethod]`/`[TestCategory(…)]`, as in the test-framework Quick map.
+`[mixed-test-frameworks]` catches a copied attribute.
 
 ```csharp
 public class LoginTests : UiTest
@@ -150,61 +153,18 @@ public sealed record LoginTestData(LoginCase WrongPassword);
 public sealed record LoginCase(string Email, string Password, string Error);
 ```
 
-**xUnit v3**
-
-```csharp
-public class LoginTests : UiTest
-{
-    private static readonly LoginTestData Data = TestData.Load<LoginTestData>("Login");
-
-    [Fact]
-    [Trait("Category", "regression")]
-    public async Task ShowsErrorForWrongPasswordAsync()
-    {
-        var loginPage = new LoginPage(Page);
-
-        await loginPage.NavigateAsync();
-        await loginPage.LoginAsync(Data.WrongPassword.Email, Data.WrongPassword.Password);
-        await loginPage.VerifyErrorMessageAsync(Data.WrongPassword.Error);
-    }
-}
-```
-
-**MSTest v4**
-
-```csharp
-[TestClass]
-public class LoginTests : UiTest
-{
-    private static readonly LoginTestData Data = TestData.Load<LoginTestData>("Login");
-
-    [TestMethod]
-    [TestCategory("regression")]
-    public async Task ShowsErrorForWrongPasswordAsync()
-    {
-        var loginPage = new LoginPage(Page);
-
-        await loginPage.NavigateAsync();
-        await loginPage.LoginAsync(Data.WrongPassword.Email, Data.WrongPassword.Password);
-        await loginPage.VerifyErrorMessageAsync(Data.WrongPassword.Error);
-    }
-}
-```
-
-The data records are the same in all three, and so is the JSON:
+The JSON:
 
 ```json
 { "wrongPassword": { "email": "qa@example.com", "password": "not-the-password", "error": "Invalid email or password" } }
 ```
-
-The test-framework skill has the full attribute mapping.
 
 ## 4. Iron laws
 
 1. **Separation.** Business code lives in Pages, Apis, Dbs and Helpers. Technical code lives in Utils.
 2. **Encapsulation.** Locators are private and never leave their page. Tests and other classes use actions and `Verify*` methods only. `[locator-visibility]` `[no-locator-in-test]`
 3. **No exception handling outside Utils.** Let failures fail: the Playwright error and the trace tell the story. `[no-try-outside-utils]`
-4. **No logic in tests.** Tests have no `if`, `switch`, loops or `?:`. `[test-logic]`
+4. **No logic in tests.** Tests have no `if`, `switch`, loops, `?:` or `??` fallbacks. `[test-logic]`
    - Business classes keep logic minimal; prefer small intent-named methods over general branching.
    - A case that varies by data becomes one data row per case: `[TestCase]`, `[InlineData]` or `[DataRow]`, or a source method.
 5. **Externalized data.** Test inputs and expected values come from the test class's own JSON, loaded with `TestData.Load<T>("<Feature>")`. `[test-data-source]`
@@ -216,7 +176,7 @@ The test-framework skill has the full attribute mapping.
    - Every assertion lives in a `Verify*` method on a business class, using web-first `Assertions.Expect`. `[no-assertion-in-test]` `[action-verify-separation]`
    - A value with no web-first form, such as a database count, is compared with `Checks.Equal(expected, actual, what)` from Utils. It throws `CheckFailedException`, which every test framework reports as a failure. The framework project never references a test framework's `Assert`.
    - Actions never assert, and `Verify*` methods never click or fill.
-   - Each test has at least one `Verify*` call.
+   - Each test has at least one `Verify*` call. `[test-without-verify]`
 7. **No fixed waits.** `Thread.Sleep`, `Task.Delay` and `WaitForTimeoutAsync` are banned outside Utils. `[no-hard-wait]`
    - Wait for a condition: auto-waiting actions, `Expect(...)`, or `WaitForAsync`.
    - A slow surface gets a named timeout from `Config/Timeouts.cs`, never a number in place. `[timeout-literal]`
@@ -303,9 +263,9 @@ public sealed class OrdersApi : IAsyncDisposable
 }
 ```
 
-The hooks in the test class, `tests/<Name>.Tests/Ui/OrdersTests.cs`:
-
-**NUnit**
+The hooks in the test class, `tests/<Name>.Tests/Ui/OrdersTests.cs`, in NUnit. MSTest v4 uses
+`[TestInitialize]`/`[TestCleanup]` the same way. xUnit v3 overrides `InitializeAsync`/`DisposeAsync`,
+which has its own call order: see [test-classes §2](../../test-classes/SKILL.md#2-layout).
 
 ```csharp
 private OrdersApi _orders = null!;
@@ -314,42 +274,6 @@ private OrdersApi _orders = null!;
 public async Task CreateOrdersApiAsync() => _orders = await OrdersApi.CreateAsync(Playwright);
 
 [TearDown]
-public async Task CleanUpAsync()
-{
-    await _orders.DeleteCreatedOrdersAsync();
-    await _orders.DisposeAsync();
-}
-```
-
-**xUnit v3**: override the base hooks. Call `base.InitializeAsync()` first and `base.DisposeAsync()` last; `GC.SuppressFinalize(this)` satisfies CA1816.
-
-```csharp
-private OrdersApi _orders = null!;
-
-public override async ValueTask InitializeAsync()
-{
-    await base.InitializeAsync();
-    _orders = await OrdersApi.CreateAsync(Playwright);
-}
-
-public override async ValueTask DisposeAsync()
-{
-    await _orders.DeleteCreatedOrdersAsync();
-    await _orders.DisposeAsync();
-    await base.DisposeAsync();
-    GC.SuppressFinalize(this);
-}
-```
-
-**MSTest v4**
-
-```csharp
-private OrdersApi _orders = null!;
-
-[TestInitialize]
-public async Task CreateOrdersApiAsync() => _orders = await OrdersApi.CreateAsync(Playwright);
-
-[TestCleanup]
 public async Task CleanUpAsync()
 {
     await _orders.DeleteCreatedOrdersAsync();

@@ -44,7 +44,8 @@ internal static partial class ShellRules
         new("git-push", GitPush(), "git push: the harness pushes only when the user asks"),
         new("delete-files", DeleteFiles(), "recursive or forced delete"),
         new("kill-process", KillProcess(), "force-kills a process"),
-        new("env-dump", EnvDump(), "prints environment variables, which may contain secrets"),
+        new("env-dump", EnvDump(), "prints environment variables or user-secrets, which may contain secrets"),
+        new("secret-file-read", SecretFileRead(), "reads a .env, certificate, key or saved sign-in (.auth) file, which the Read tool is denied"),
         new("secret-in-command", SecretInCommand(), "the command line mentions a password, token or key"),
         new("sql-delete", SqlDelete(), "DELETE FROM removes database rows"),
         new("gh-write", GhWrite(), "this gh command changes GitHub (runs, PRs, issues, releases, secrets or the repo)"),
@@ -143,8 +144,12 @@ internal static partial class ShellRules
     [GeneratedRegex(@"\btaskkill\b.*\s/f\b|\bkill\s+-(?:9|kill|sigkill)\b|\bstop-process\b.*\s-fo\w*", I)]
     private static partial Regex KillProcess();
 
-    [GeneratedRegex(@"\bprintenv\b|\b(?:gci|get-childitem|dir|ls)\s+env:", I)]
+    [GeneratedRegex(@"\bprintenv\b|\b(?:gci|get-childitem|dir|ls)\s+env:|\bdotnet\s+user-secrets\s+list\b", I)]
     private static partial Regex EnvDump();
+
+    // Mirrors the Read deny list in templates/settings.harness.json.
+    [GeneratedRegex(@"\b(?:cat|type|gc|get-content|more|less|head|tail|sls|select-string|grep|rg|findstr|nl|strings|xxd)\b.*(?:\.env(?:\.[\w-]+)*(?=$|[\s""'|;&>])|\.(?:pfx|pem|key)\b|\.auth(?:[\\/]|\s|$))", I)]
+    private static partial Regex SecretFileRead();
 
     [GeneratedRegex(@"\b(?:curl|wget|iwr|irm|invoke-webrequest|invoke-restmethod)\b.*\b(?:password|passwd|secret|api.?key|token)\b|\b(?:echo|write-host|write-output|printf)\b.*\b(?:password|secret|api.?key|token|connection.?string)\b", I)]
     private static partial Regex SecretInCommand();
