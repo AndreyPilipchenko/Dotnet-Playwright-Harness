@@ -43,3 +43,4 @@ The original plan listed these, and they don't exist in the harness today:
   path rule catches those. Revisit if a ledger class reaches three entries that a rule loaded for
   that path would have prevented.
 - Saved Claude Code workflows. The tool wasn't available when vetted, so the main session drives the loops.
+  It was still not available on 2026-11-22. It stays deferred, under the conditions in `external-tools.md`.
