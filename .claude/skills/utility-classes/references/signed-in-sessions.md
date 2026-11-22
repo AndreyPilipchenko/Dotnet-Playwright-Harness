@@ -59,7 +59,7 @@ A test class opts in with one line: `protected override string? Role => Roles.Cu
 |---|---|
 | The sign-in threw | `Role 'broken' could not sign in at the start of the run: <the sign-in's first error line>`. The whole exception, with Playwright's call log, is the inner exception |
 | Two roles whose names map to the same file (`a b` and `a_b`, or `Admin` and `admin`) | The run-once hook refuses before anyone signs in, naming both roles, so the whole run fails. No role can run as another |
-| `Role` names a role that isn't in `Roles.cs` | `Role 'typo' is not in Setup/Roles.cs, so it was never signed in.` |
+| `Role` names a role that isn't in `Roles.cs`, or the run-once hook didn't run before the test | `Role 'typo' was never signed in. Either it is not in Setup/Roles.cs, or SignInOnce did not run before this test (…)`. On NUnit, the hook covers only the root test namespace and those below it |
 
 Only that role's tests fail. API tests, `[SignedOut]` tests, tests without a role, and other roles
 still run. A browser that won't launch fails the whole run.

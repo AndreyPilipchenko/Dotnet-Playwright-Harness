@@ -63,7 +63,7 @@ public class ScaffolderTests
         var text = File.ReadAllText(dir.Combine("src/Acme.Shop.Framework/Utils/SignedInSessions.cs"));
 
         Assert.All(
-            ["AppContext.BaseDirectory", "\".auth\"", "Guid.NewGuid()", "StorageStateAsync", "could not sign in at the start of the run", "ThroughApi", "ThroughLoginPage", "class SignedOutAttribute"],
+            ["AppContext.BaseDirectory", "\".auth\"", "Guid.NewGuid()", "StorageStateAsync", "could not sign in at the start of the run", "or SignInOnce did not run before this test", "ThroughApi", "ThroughLoginPage", "class SignedOutAttribute"],
             s => Assert.Contains(s, text, StringComparison.Ordinal));
         Assert.All([".Result", ".Wait()", "GetResult()"], s => Assert.DoesNotContain(s, text, StringComparison.Ordinal));
     }

@@ -86,7 +86,8 @@ public static class SignedInSessions
     {
         if (!Outcomes.TryGetValue(role, out var failure))
         {
-            throw new InvalidOperationException($"Role '{role}' is not in Setup/Roles.cs, so it was never signed in.");
+            throw new InvalidOperationException(
+                $"Role '{role}' was never signed in. Either it is not in Setup/Roles.cs, or SignInOnce did not run before this test (on NUnit, keep test classes in the root test namespace or below it).");
         }
 
         return failure is null
