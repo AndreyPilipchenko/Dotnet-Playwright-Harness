@@ -13,48 +13,12 @@ Read [design-conventions](../pom-architecture/references/design-conventions.md) 
 
 ## 1. One test, one behaviour
 
-Use the samples for the framework in `.harness/project.json`. Only the attributes differ; the body
-is the same in all three.
-
-**NUnit**
+The samples are NUnit. On xUnit v3 or MSTest v4 (see `.harness/project.json`) the body is the same
+and only the attributes change, per the test-framework Quick map.
 
 ```csharp
 [Test]
 [Category("smoke")]
-public async Task RemovesADeletedOrderAsync()
-{
-    var id = await _orders.CreateOrderAsync(Data.Orders["standard"].Product, 1);
-    var checkout = new CheckoutActions(Page);
-    var ordersPage = new OrdersPage(Page);
-
-    await checkout.SignInAndOpenOrdersAsync(Data.User.Email, Secrets.Get("SHOP_PASSWORD"));
-    await ordersPage.DeleteOrderAsync(id);
-    await ordersPage.VerifyOrderAbsentAsync(id);
-}
-```
-
-**xUnit v3**
-
-```csharp
-[Fact]
-[Trait("Category", "smoke")]
-public async Task RemovesADeletedOrderAsync()
-{
-    var id = await _orders.CreateOrderAsync(Data.Orders["standard"].Product, 1);
-    var checkout = new CheckoutActions(Page);
-    var ordersPage = new OrdersPage(Page);
-
-    await checkout.SignInAndOpenOrdersAsync(Data.User.Email, Secrets.Get("SHOP_PASSWORD"));
-    await ordersPage.DeleteOrderAsync(id);
-    await ordersPage.VerifyOrderAbsentAsync(id);
-}
-```
-
-**MSTest v4** (the class around it carries `[TestClass]`, see test-classes)
-
-```csharp
-[TestMethod]
-[TestCategory("smoke")]
 public async Task RemovesADeletedOrderAsync()
 {
     var id = await _orders.CreateOrderAsync(Data.Orders["standard"].Product, 1);
@@ -85,19 +49,17 @@ Not allowed, each reported by `check-conventions`:
 | `Page.GotoAsync(…)` `[no-navigation-in-test]` | the page's `NavigateAsync` |
 | `HttpClient`, `APIRequest`, `FetchAsync` `[no-http-in-test]` | an `<Domain>Api` class |
 | `if`, `switch`, loops, `?:` `[test-logic]` | data rows, or a method one layer down |
-| a `??` fallback (not reported, but still logic) | the data, or `Secrets.Get`, which fails loudly instead of falling back |
+| a `??` fallback `[test-logic]` | the data, or `Secrets.Get`, which fails loudly instead of falling back |
 | `try`/`catch` `[no-try-outside-utils]` | nowhere; let it fail |
 | `Thread.Sleep`, `Task.Delay` `[no-hard-wait]` | an auto-waiting action or a `Verify*` |
 | literal inputs or expected values | the paired JSON (test-data) |
 
 ## 3. At least one `Verify*`
 
-Every test calls at least one `Verify*` method. A test that only acts proves nothing: it passes
+Every test calls at least one `Verify*` method. `[test-without-verify]` A test that only acts proves nothing: it passes
 when the product ignores the action.
 
 ## 4. Variants are data rows
-
-**NUnit**
 
 ```csharp
 [TestCase("standard")]
@@ -115,43 +77,7 @@ public async Task ShowsNewOrderWithItsStatusAsync(string shipping)
 }
 ```
 
-**xUnit v3**
-
-```csharp
-[Theory]
-[InlineData("standard")]
-[InlineData("express")]
-[Trait("Category", "regression")]
-public async Task ShowsNewOrderWithItsStatusAsync(string shipping)
-{
-    var order = Data.Orders[shipping];
-    var id = await _orders.CreateOrderAsync(order.Product, order.Quantity);
-    var checkout = new CheckoutActions(Page);
-    var ordersPage = new OrdersPage(Page);
-
-    await checkout.SignInAndOpenOrdersAsync(Data.User.Email, Secrets.Get("SHOP_PASSWORD"));
-    await ordersPage.VerifyOrderStatusAsync(id, order.Status);
-}
-```
-
-**MSTest v4**
-
-```csharp
-[TestMethod]
-[DataRow("standard")]
-[DataRow("express")]
-[TestCategory("regression")]
-public async Task ShowsNewOrderWithItsStatusAsync(string shipping)
-{
-    var order = Data.Orders[shipping];
-    var id = await _orders.CreateOrderAsync(order.Product, order.Quantity);
-    var checkout = new CheckoutActions(Page);
-    var ordersPage = new OrdersPage(Page);
-
-    await checkout.SignInAndOpenOrdersAsync(Data.User.Email, Secrets.Get("SHOP_PASSWORD"));
-    await ordersPage.VerifyOrderStatusAsync(id, order.Status);
-}
-```
+xUnit v3: `[Theory]` + `[InlineData("standard")]`. MSTest v4: `[TestMethod]` + `[DataRow("standard")]`.
 
 - Same steps, different data: one method with a row per case. The row holds the case key; the values stay in the JSON (test-framework has the attributes).
 - Different steps: separate tests, kept next to each other in the class.
