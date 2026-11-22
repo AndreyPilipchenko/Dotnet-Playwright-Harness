@@ -318,6 +318,17 @@ public partial class ScaffoldCiTests
         Assert.Contains("playwright.ps1 install --with-deps $env:PLAYWRIGHT_BROWSER", setup, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void StaticChecks_CancelASupersededRunOfTheSamePullRequest()
+    {
+        using var dir = Project();
+        Scaffold(dir);
+
+        var checks = File.ReadAllText(dir.Combine(".github/workflows/static-checks.yml")).ReplaceLineEndings("\n");
+
+        Assert.Contains("concurrency:\n  group: ${{ github.workflow }}-${{ github.ref }}\n  cancel-in-progress: true\n", checks, StringComparison.Ordinal);
+    }
+
     [GeneratedRegex(@"(?m)^\s*(?:- )?uses:\s*(\S+)")]
     private static partial Regex UsesLine();
 }
