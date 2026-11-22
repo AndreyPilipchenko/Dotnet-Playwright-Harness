@@ -233,3 +233,4 @@ Documented at code.claude.com/docs/en/workflows.
 - Workflows are allowed, but **optional**.
 - Every workflow-driven loop must also work with workflows disabled, by having the main agent drive the subagents.
 - The `Workflow` tool was not available in the vetting session, and it was still not available on the second check on 2026-11-07. **The live run is deferred** to the first session where the tool exists. Until then no workflow file is written, and the loops are driven by the main agent.
+- Checked a third time on 2026-11-22: still no `Workflow` tool. Even when it arrives, a workflow could only duplicate loops that must already work without it, and it would add `.js`. So build one only if that live run shows a gain the main agent can't get, such as cost or parallel work.
