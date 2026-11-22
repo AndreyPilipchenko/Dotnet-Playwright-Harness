@@ -266,6 +266,17 @@ one with a method attribute, one plain, and one whose `ContextOptions()` throws.
 | Method attribute | `GetType().GetMethod(name)?.IsDefined(typeof(A), false)` was `true` only on the marked test, on all three frameworks | | |
 | `ContextOptions()` throws | Only that test failed, as "SetUp : System.InvalidOperationException : <message>". The others passed | Only that test failed: "XunitException: System.InvalidOperationException : <message>" | Only that test failed: "Initialization method …ContextSetup threw exception. System.InvalidOperationException: <message>" |
 
+**`[SignedOut]` with data rows and overloads (verified 2026-11-22).** This was spiked with a probe role
+whose sign-in only adds a cookie, so each test could check its own context:
+- **Data rows:** on all three frameworks, both rows of a two-row data-driven test got the right
+  state, with and without `[SignedOut]`. The method name the framework gives has no arguments in it.
+- **Overloads, before the fix:** on NUnit and MSTest, `GetMethod(name)` threw
+  `AmbiguousMatchException` in setup for both overloads, even when they agreed.
+- **xUnit:** overloaded tests are a build error there (xUnit1024).
+- **Overloads, after the fix:** the NUnit and MSTest `UiTest` now look at every method of that name.
+  A pair that agrees passed, and a pair that disagrees failed with "The overloads of X disagree on
+  [SignedOut]".
+
 **End to end (verified 2026-11-21, all three frameworks).** Each skeleton was scaffolded from the
 templates, with `Roles.cs`, `SignInOnce.cs`, `UiTest.Role` and `[SignedOut]`. It ran against a
 stand-in app, a PowerShell `HttpListener` with a cookie session and a local-storage token, using

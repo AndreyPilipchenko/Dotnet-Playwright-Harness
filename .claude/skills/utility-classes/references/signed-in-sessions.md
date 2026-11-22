@@ -70,6 +70,11 @@ A method marked `[SignedOut]` gets a fresh, signed-out context, even in a class 
 it for the login flow itself: a wrong password, sign-out, password reset. A login test never sets a
 role.
 
+It applies to every data row of a data-driven test. The check goes by method name, so on NUnit and
+MSTest, overloads of one test must all have `[SignedOut]` or all lack it. If they disagree, each of
+them fails with "The overloads of X disagree on [SignedOut]". Give the signed-out test its own name.
+xUnit doesn't allow overloaded tests (xUnit1024).
+
 ## Parallel runs
 
 - Every role signs in inside the run-once hook, before any test starts, so no two tests race to

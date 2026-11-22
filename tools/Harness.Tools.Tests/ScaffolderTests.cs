@@ -224,6 +224,22 @@ public class ScaffolderTests
         Assert.All(["protected virtual string? Role", "SignedInSessions.PathFor(", "SignedOutAttribute", "public static BrowserNewContextOptions BaseContextOptions()"], s => Assert.Contains(s, text, StringComparison.Ordinal));
     }
 
+    // NUnit and MSTest allow overloaded tests, and GetMethod(name) throws on them (spike 2026-11-22).
+    // xUnit makes overloads a build error (xUnit1024), so its lookup by name stays.
+    [Theory]
+    [InlineData("nunit")]
+    [InlineData("mstest")]
+    public void RealTemplates_UiTest_OverloadsMustAgreeOnSignedOut(string framework)
+    {
+        using var dir = new TempDir();
+        Scaffolder.Run(Options(framework, dir.Path));
+
+        var text = File.ReadAllText(dir.Combine("tests/Acme.Shop.Tests/Setup/UiTest.cs"));
+
+        Assert.DoesNotContain("GetMethod(name)", text, StringComparison.Ordinal);
+        Assert.Contains("disagree on [SignedOut]", text, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("nunit")]
     [InlineData("xunit")]
