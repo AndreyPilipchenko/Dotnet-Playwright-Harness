@@ -9,6 +9,11 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same pull request cancels the run it supersedes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   static-checks:
     runs-on: ubuntu-latest

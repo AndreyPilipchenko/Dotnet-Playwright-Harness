@@ -24,7 +24,7 @@ It reads the framework and name from `.harness/project.json`, and never overwrit
 
 | File under `.github/` | Runs | Does |
 |---|---|---|
-| `workflows/static-checks.yml` | Pull requests, by hand | Build with warnings as errors, check-conventions, traceability, validate-skills, vulnerable packages |
+| `workflows/static-checks.yml` | Pull requests (a newer push cancels the older run), by hand | Build with warnings as errors, check-conventions, traceability, validate-skills, vulnerable packages |
 | `workflows/smoke.yml` | Pushes to `main`, by hand | The `smoke` category on the first chosen browser |
 | `workflows/nightly.yml` | 02:00 UTC, by hand | Every test, one job per chosen browser (`regression (<browser>)`, one failing doesn't cancel the others), an outdated-package report, then the HTML reports with one run per browser |
 | `actions/setup-harness` | Called by the jobs | .NET from `global.json`, the harness tool from source, the build, the browser |
