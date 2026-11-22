@@ -132,5 +132,5 @@ There is no uninstall command, because the install is ordinary files in git.
 
 1. If the install or update is committed: `git revert <that commit>`. The user decides and runs it.
 2. If it isn't committed: show `git status --short`. Undoing it discards work, so confirm with the user which files to restore.
-3. Delete the line `@.harness/templates/CLAUDE.harness.md` from `CLAUDE.md`, or the whole file if the install created it.
+3. If `CLAUDE.md` still has the line `@.harness/templates/CLAUDE.harness.md`, delete that line. If the file is then empty, delete the file.
 4. Restart Claude Code.
