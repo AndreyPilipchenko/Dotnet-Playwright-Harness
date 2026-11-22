@@ -35,8 +35,12 @@ public sealed class SignedOutAttribute : Attribute;
 /// </summary>
 public static class SignedInSessions
 {
-    private static readonly string RunFolder =
-        Path.Combine(AppContext.BaseDirectory, ".auth", Guid.NewGuid().ToString("N"));
+    private static readonly string AuthFolder = Path.Combine(AppContext.BaseDirectory, ".auth");
+
+    private static readonly string RunFolder = Path.Combine(AuthFolder, Guid.NewGuid().ToString("N"));
+
+    // Held open for the whole run. The OS lets go of it when the process dies, even when it is killed.
+    private static FileStream? _lock;
 
     private static readonly ConcurrentDictionary<string, Exception?> Outcomes = new(StringComparer.Ordinal);
 
@@ -54,7 +58,9 @@ public static class SignedInSessions
                 $"Roles {string.Join(", ", clash.Select(r => $"'{r.Name}'"))} share the file name '{clash.Key}'. Give each role in Setup/Roles.cs a distinct name.");
         }
 
+        DeleteAbandoned();
         Directory.CreateDirectory(RunFolder);
+        _lock = new FileStream(Path.Combine(RunFolder, ".lock"), FileMode.CreateNew, FileAccess.Write, FileShare.None);
         foreach (var role in roles)
         {
             var context = await browser.NewContextAsync(options);
@@ -95,9 +101,47 @@ public static class SignedInSessions
     /// <summary>Deletes this run's saved sessions. Other runs' folders are left alone.</summary>
     public static void DeleteAll()
     {
+        _lock?.Dispose();
         if (Directory.Exists(RunFolder))
         {
             Directory.Delete(RunFolder, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Deletes the folders of earlier runs that died before <see cref="DeleteAll"/>, so their tokens
+    /// don't stay on disk. A folder whose lock can be taken belongs to no live run. A folder with no
+    /// lock may be a run that is just starting, so it is deleted only when it is over a day old: a
+    /// run that died while starting, or one from before the harness used locks.
+    /// </summary>
+    private static void DeleteAbandoned()
+    {
+        if (!Directory.Exists(AuthFolder))
+        {
+            return;
+        }
+
+        foreach (var folder in Directory.GetDirectories(AuthFolder))
+        {
+            try
+            {
+                var lockFile = Path.Combine(folder, ".lock");
+                if (File.Exists(lockFile))
+                {
+                    // Throws IOException while its run is alive.
+                    new FileStream(lockFile, FileMode.Open, FileAccess.Write, FileShare.None).Dispose();
+                }
+                else if (DateTime.UtcNow - Directory.GetCreationTimeUtc(folder) < TimeSpan.FromDays(1))
+                {
+                    continue;
+                }
+
+                Directory.Delete(folder, recursive: true);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Alive, starting, or being deleted by another run: leave it.
+            }
         }
     }
 

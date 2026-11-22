@@ -308,6 +308,19 @@ stand-in app, a PowerShell `HttpListener` with a cookie session and a local-stor
 - **A skeleton with no roles** builds with 0 warnings, its greeting test passes, and `check-conventions`
   reports 0 failures.
 
+**Folders of killed runs (verified 2026-11-22).** Each run holds `.auth/<run-id>/.lock` open with
+`FileShare.None`. At sign-in it deletes every sibling folder whose lock it can open, and every
+unlocked folder that is more than a day old.
+- **The lock:** a console app held the lock while a second process tried to open it.
+  - On Windows and in the `mcr.microsoft.com/dotnet/sdk:10.0` Linux container, the open threw
+    `IOException` while the lock was held.
+  - The open succeeded after the holder was killed (`Stop-Process -Force` on Windows, `kill -9` on Linux).
+  - On Linux this works through .NET's advisory `flock`, so it holds only between .NET processes.
+- **The cleanup, on Windows with NUnit and the probe role:** four folders were planted before a run.
+  - Deleted: a dead run (an unheld `.lock`) and a two-day-old folder with no lock.
+  - Kept: a live run (its `.lock` held by another process) and a new folder with no lock.
+  - The run's own folder was also gone afterwards, and 9 of 9 tests passed.
+
 ## Traces of failed tests (verified 2026-11-08, Windows, Chromium)
 
 `UiTest` starts tracing when `TRACE_DIR` is set, and saves the zip only when the test failed. A project scaffolded from each template, with one passing and one failing test, left a zip for the failing test only.
