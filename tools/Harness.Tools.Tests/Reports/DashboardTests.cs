@@ -124,6 +124,21 @@ public class DashboardTests
     }
 
     [Fact]
+    public void AFailure_NamesTheJobsItFailedIn_SoNightlyShowsTheBrowser()
+    {
+        using var dir = new TempDir();
+        dir.Write("a/a.trx", TrxFixture.Run(new TrxCase("Both")));
+        dir.Write("b/b.trx", TrxFixture.Run(new TrxCase("Both", "Failed", "e")));
+        dir.Write("c/c.trx", TrxFixture.Run(new TrxCase("Both", "Failed", "e")));
+
+        Run(null, "--run", "regression-chromium=" + dir.Combine("a"), "--run", "regression-firefox=" + dir.Combine("b"), "--run", "regression-webkit=" + dir.Combine("c"), "--root", dir.Path, "--out", dir.Combine("o.html"));
+
+        var page = File.ReadAllText(dir.Combine("o.html"));
+        Assert.Contains("<th>Failed in</th>", page, StringComparison.Ordinal);
+        Assert.Contains("<td>regression-firefox, regression-webkit</td>", page, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AJobWithoutResults_IsNamed_AndTheRestIsShown()
     {
         using var dir = new TempDir();
