@@ -37,4 +37,9 @@ External tools were tested before any decision. The evidence is in [external-too
 The original plan listed these, and they don't exist in the harness today:
 
 - Path-scoped rules under `.claude/rules/`. The conventions live in skills and in `check-conventions`.
+  Decided against (2026-11-22): in the pilot, `check-conventions` ran 72 times with 0 failures and
+  0 warnings. The five review-ledger findings were about meaning: a check looser than its test case,
+  doc comments claiming another case's coverage, an unclear error, and an undocumented variable. No
+  path rule catches those. Revisit if a ledger class reaches three entries that a rule loaded for
+  that path would have prevented.
 - Saved Claude Code workflows. The tool wasn't available when vetted, so the main session drives the loops.
