@@ -330,15 +330,46 @@ public sealed class HookModesTests : IDisposable
     private HookResult Start() => _host.Run("session-start", new { session_id = "s1", source = "startup" });
 
     [Fact]
-    public void SessionStart_InjectsReminders()
+    public void SessionStart_InjectsReminders_WhenThereIsNoClaudeMd()
     {
         var r = Start();
 
         Assert.Equal(0, r.Code);
-        // Consumer projects get no CLAUDE.md from the harness; routing lives in pom-architecture.
         Assert.Contains("pom-architecture", r.Out, StringComparison.Ordinal);
         Assert.DoesNotContain("CLAUDE.md", r.Out, StringComparison.Ordinal);
         Assert.Contains("branch", r.Out, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SessionStart_InjectsReminders_WhenClaudeMdLacksTheImport()
+    {
+        _host.Root.Write("CLAUDE.md", "# Project instructions\n\nOur own rules.\n");
+
+        Assert.Contains("pom-architecture", Start().Out, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SessionStart_StaysQuiet_WhenClaudeMdImportsTheHarnessInstructions()
+    {
+        // CLAUDE.harness.md already carries the same reminders, so repeating them costs context.
+        _host.Root.Write("CLAUDE.md", "# Project instructions\r\n\r\n  " + Harness.Tools.Installing.ClaudeMd.ImportLine + "\r\n");
+
+        var r = Start();
+
+        Assert.Equal(0, r.Code);
+        Assert.Equal(string.Empty, r.Out);
+    }
+
+    [Fact]
+    public void SessionStart_StillWarnsAboutSetup_WhenClaudeMdImportsTheHarnessInstructions()
+    {
+        _host.Root.Write("CLAUDE.md", Harness.Tools.Installing.ClaudeMd.ImportLine + "\n");
+        Directory.CreateDirectory(_host.Root.Combine(".harness"));
+
+        var r = Start();
+
+        Assert.Contains("setup.ps1", r.Out, StringComparison.Ordinal);
+        Assert.DoesNotContain("pom-architecture", r.Out, StringComparison.Ordinal);
     }
 
     [Fact]

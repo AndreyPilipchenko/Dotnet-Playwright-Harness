@@ -42,6 +42,28 @@ Helpers. Reading an environment variable, or polling until something is true, is
 - **Naming:** a noun for what it provides, usually a `static class`: `Secrets`, `Retry`, `UniqueData`. Never `<Noun>Actions`; that suffix means a business flow in Helpers.
 - **Config** holds environment coordinates and named constants, never secrets. Each constant gets an XML doc comment saying why it has that value.
 
+`ApiContext` is not in the template. Write it like this, so the key goes through `Secrets`:
+
+```csharp
+// src/<Name>.Framework/Utils/ApiContext.cs (technical: connection details from the environment)
+public static class ApiContext
+{
+    public static Task<IAPIRequestContext> CreateAsync(IPlaywright playwright, string header, string variable)
+    {
+        ArgumentNullException.ThrowIfNull(playwright);
+        var key = Secrets.Get(variable); // throws when unset, and masks the key in traces
+        // API_URL when the API has its own origin; unset or empty (as in CI) falls back to BASE_URL.
+        var apiUrl = Environment.GetEnvironmentVariable("API_URL");
+        return playwright.APIRequest.NewContextAsync(new()
+        {
+            BaseURL = string.IsNullOrEmpty(apiUrl) ? Environment.GetEnvironmentVariable("BASE_URL") : apiUrl,
+            ExtraHTTPHeaders = new Dictionary<string, string> { [header] = key },
+        });
+    }
+}
+```
+
+
 ## 3. The only place for `try`, delays and complexity
 
 Utils is exempt from `[no-try-outside-utils]` and `[no-hard-wait]`. That is a responsibility, not a

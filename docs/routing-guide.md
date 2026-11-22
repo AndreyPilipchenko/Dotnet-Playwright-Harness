@@ -69,7 +69,7 @@ These load while code is being written or reviewed. You rarely ask for them dire
 The hooks run without being asked. Until `setup.ps1` has built the tool, they do nothing and block nothing.
 
 - Blocked: a push to the default branch, a write that looks like a hard-coded secret, catastrophic commands, and repeating a failed `dotnet test` with no edit in between.
-- Asks first: destructive commands, and `gh` actions that change something, such as `gh workflow run` or `gh pr merge`.
-- Warns: convention findings in an edited `.cs` file.
+- Asks first: destructive commands; `gh` actions that change something, such as `gh workflow run` or `gh pr merge`; reading `.env`, key, certificate or saved sign-in (`.auth`) files in a shell; printing environment variables or user-secrets; and a password or token on a command line.
+- Warns: convention findings in an edited `.cs` file, such as a test that never calls a `Verify*` method.
 
 Hooks don't see MCP calls, so see [mcp.md](mcp.md) before adding a server.
