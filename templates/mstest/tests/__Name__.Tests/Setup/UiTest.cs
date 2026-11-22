@@ -37,8 +37,17 @@ public abstract class UiTest : PageTest
     }
 
     private bool CurrentTestIsSignedOut() =>
-        TestContext.TestName is { } name
-        && (GetType().GetMethod(name)?.IsDefined(typeof(SignedOutAttribute), inherit: false) ?? false);
+        TestContext.TestName is { } name && IsSignedOut(name);
+
+    // Overloaded tests share a name, and the name is all we have here, so they must agree on [SignedOut].
+    private bool IsSignedOut(string name)
+    {
+        var marks = GetType().GetMethods().Where(m => m.Name == name)
+            .Select(m => m.IsDefined(typeof(SignedOutAttribute), inherit: false)).Distinct().ToList();
+        return marks.Count <= 1
+            ? marks.SingleOrDefault()
+            : throw new InvalidOperationException($"The overloads of {name} disagree on [SignedOut]. Give the signed-out test a name of its own.");
+    }
 
     private BrowserDiagnostics? _diagnostics;
 
