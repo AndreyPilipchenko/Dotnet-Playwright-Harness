@@ -21,11 +21,10 @@ hook attributes for each framework.
 
 ## 2. Layout
 
-The canonical order, from verified examples. NUnit and xUnit v3 are shown because their hooks differ.
-MSTest v4 is the NUnit form with `[TestClass]` on the class, `[TestMethod]` + `[DataRow]`,
-`[TestCategory]`, and `[TestInitialize]`/`[TestCleanup]` (test-framework Quick map).
-
-**NUnit**
+The canonical order, from a verified example, in NUnit. MSTest v4 is the same form with `[TestClass]`
+on the class, `[TestMethod]` + `[DataRow]`, `[TestCategory]` and `[TestInitialize]`/`[TestCleanup]`.
+xUnit v3 replaces the two hook methods with `InitializeAsync`/`DisposeAsync` overrides (§3 below has
+the call order). All three are written out in the [test-framework playbook §2–4](../test-framework/references/playbook.md#2-nunit).
 
 ```csharp
 public class OrdersTests : UiTest
@@ -51,41 +50,6 @@ public class OrdersTests : UiTest
     {
         await _orders.DeleteCreatedOrdersAsync();
         await _orders.DisposeAsync();
-    }
-}
-```
-
-**xUnit v3**: the hooks are overrides of the base class's `InitializeAsync` and `DisposeAsync`.
-
-```csharp
-public class OrdersTests : UiTest
-{
-    private static readonly OrdersTestData Data = TestData.Load<OrdersTestData>("Orders");
-
-    private OrdersApi _orders = null!;
-
-    [Theory]
-    [InlineData("standard")]
-    [InlineData("express")]
-    [Trait("Category", "regression")]
-    public async Task ShowsNewOrderWithItsStatusAsync(string shipping) { /* see test-methods */ }
-
-    [Fact]
-    [Trait("Category", "smoke")]
-    public async Task RemovesADeletedOrderAsync() { /* see test-methods */ }
-
-    public override async ValueTask InitializeAsync()
-    {
-        await base.InitializeAsync();
-        _orders = await OrdersApi.CreateAsync(Playwright);
-    }
-
-    public override async ValueTask DisposeAsync()
-    {
-        await _orders.DeleteCreatedOrdersAsync();
-        await _orders.DisposeAsync();
-        await base.DisposeAsync();
-        GC.SuppressFinalize(this);
     }
 }
 ```

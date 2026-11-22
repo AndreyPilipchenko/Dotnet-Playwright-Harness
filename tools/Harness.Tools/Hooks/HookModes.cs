@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Harness.Tools.Conventions;
+using Harness.Tools.Installing;
 
 namespace Harness.Tools.Hooks;
 
@@ -171,11 +172,15 @@ internal static class HookModes
     public static HookDecision SessionStart(HookInput input)
     {
         var root = input.Context.ProjectRoot;
-        var text = new StringBuilder()
-            .AppendLine("Harness reminders:")
-            .AppendLine("- Start each framework task with the pom-architecture skill: its Routing table names the skill to use before changing files.")
-            .AppendLine("- Work on a named branch (automation/, harness/, feature/, fix/). Never push to the default branch. Commit, push or open a PR only when the user asks.")
-            .AppendLine("- Before committing, run Harness.Tools check-conventions and fix what it reports.");
+        var text = new StringBuilder();
+
+        // CLAUDE.harness.md carries these when CLAUDE.md imports it; repeat them only as a fallback.
+        if (!ClaudeMd.Imports(Path.Combine(root, "CLAUDE.md")))
+        {
+            text.AppendLine("- Start each framework task with the pom-architecture skill: its Routing table names the skill to use before changing files.")
+                .AppendLine("- Work on a named branch (automation/, harness/, feature/, fix/). Never push to the default branch. Commit, push or open a PR only when the user asks.")
+                .AppendLine("- Before committing, run Harness.Tools check-conventions and fix what it reports.");
+        }
 
         if (Directory.Exists(Path.Combine(root, ".harness")) && !File.Exists(Path.Combine(root, ".harness", "project.json")))
         {
@@ -192,7 +197,11 @@ internal static class HookModes
             }
         }
 
-        input.Out.Write(text.ToString());
+        if (text.Length > 0)
+        {
+            input.Out.Write("Harness reminders:" + Environment.NewLine + text);
+        }
+
         return HookDecision.Allow;
     }
 

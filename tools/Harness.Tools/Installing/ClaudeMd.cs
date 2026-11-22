@@ -45,7 +45,7 @@ internal static class ClaudeMd
                 return ClaudeMdChange.NotUtf8;
             }
 
-            if (text.Split('\n').Any(line => line.Trim() == ImportLine))
+            if (HasImport(text))
             {
                 return ClaudeMdChange.Unchanged;
             }
@@ -56,6 +56,21 @@ internal static class ClaudeMd
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             return ClaudeMdChange.WriteFailed;
+        }
+    }
+
+    public static bool HasImport(string text) => text.Split('\n').Any(line => line.Trim() == ImportLine);
+
+    /// <summary>Whether the project's CLAUDE.md imports the harness instructions; false when it can't be read.</summary>
+    public static bool Imports(string path)
+    {
+        try
+        {
+            return File.Exists(path) && HasImport(File.ReadAllText(path));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
         }
     }
 

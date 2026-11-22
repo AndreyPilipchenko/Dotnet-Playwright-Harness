@@ -35,6 +35,11 @@ public class OrdersTests : UiTest
 {
     private OrdersApi _orders = null!;
 
+    [TestCase("standard")]
+    [TestCase("express")]
+    [Category("regression")]
+    public async Task ShowsShippingOptionAsync(string option) { /* business calls */ }
+
     [SetUp]
     public async Task CreateOrdersApiAsync() => _orders = await OrdersApi.CreateAsync(Playwright);
 
@@ -44,11 +49,6 @@ public class OrdersTests : UiTest
         await _orders.DeleteCreatedOrdersAsync();
         await _orders.DisposeAsync();
     }
-
-    [TestCase("standard")]
-    [TestCase("express")]
-    [Category("regression")]
-    public async Task ShowsShippingOptionAsync(string option) { /* business calls */ }
 }
 ```
 
@@ -63,6 +63,12 @@ public class OrdersTests : UiTest
 {
     private OrdersApi _orders = null!;
 
+    [Theory]
+    [InlineData("standard")]
+    [InlineData("express")]
+    [Trait("Category", "regression")]
+    public async Task ShowsShippingOptionAsync(string option) { /* business calls */ }
+
     public override async ValueTask InitializeAsync()
     {
         await base.InitializeAsync();   // first: creates Page and Playwright
@@ -76,12 +82,6 @@ public class OrdersTests : UiTest
         await base.DisposeAsync();      // last
         GC.SuppressFinalize(this);      // CA1816 requires it under the strict build
     }
-
-    [Theory]
-    [InlineData("standard")]
-    [InlineData("express")]
-    [Trait("Category", "regression")]
-    public async Task ShowsShippingOptionAsync(string option) { /* business calls */ }
 }
 ```
 
@@ -107,6 +107,12 @@ public class OrdersTests : UiTest
 {
     private OrdersApi _orders = null!;
 
+    [TestMethod]
+    [DataRow("standard")]
+    [DataRow("express")]
+    [TestCategory("regression")]
+    public async Task ShowsShippingOptionAsync(string option) { /* business calls */ }
+
     [TestInitialize]
     public async Task CreateOrdersApiAsync() => _orders = await OrdersApi.CreateAsync(Playwright);
 
@@ -116,12 +122,6 @@ public class OrdersTests : UiTest
         await _orders.DeleteCreatedOrdersAsync();
         await _orders.DisposeAsync();
     }
-
-    [TestMethod]
-    [DataRow("standard")]
-    [DataRow("express")]
-    [TestCategory("regression")]
-    public async Task ShowsShippingOptionAsync(string option) { /* business calls */ }
 }
 ```
 

@@ -60,7 +60,7 @@ dotnet package list --outdated --format json   # for a script to read
 
 1. Read the rule id (`CA…`, `IDE…`, `CS…`, `NUnit…`) and its message. Look the id up if it is unclear.
 2. **Fix the code.** Common cases in test code:
-   - `CS8618` (non-nullable field not set in the constructor): set it in the constructor. For a field set in setup, use `= null!;` on that field, as design-conventions §5 shows for `_orders`.
+   - `CS8618` (non-nullable field not set in the constructor): set it in the constructor. For a field set in setup, use `= null!;` on that field, as test-classes §2 shows for `_orders`.
    - `CA2007` (`ConfigureAwait`) does not fire in the scaffolded build, which awaits without `ConfigureAwait`. If it ever appears, don't add `ConfigureAwait(false)` all over test code; ask the user.
    - `IDE` naming errors: rename to match `.editorconfig` (`_camelCase` private fields, PascalCase constants and static readonly fields, `Async` suffix).
 3. If the warning is really wrong for this code, suppress it **at the narrowest scope, with a reason**:

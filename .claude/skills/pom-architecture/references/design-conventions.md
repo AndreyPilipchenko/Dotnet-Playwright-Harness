@@ -202,85 +202,10 @@ The JSON:
 A test that needs data creates it through an `<Domain>Api` class and removes it afterwards.
 It never relies on records that happen to exist.
 
-- The Api class owns its request context. A Utils helper creates the context from environment variables, so a test only ever holds the business class.
+- The Api class owns its request context, created by a Utils helper (`ApiContext`) from environment variables and `Secrets.Get`, so a test only ever holds the business class. Sample: [utility-classes §2](../../utility-classes/SKILL.md#2-what-lives-here).
 - Arrangement fails loudly: a failed create throws with the status, it never asserts. Assertions belong in `Verify*` methods.
-
-```csharp
-// src/<Name>.Framework/Utils/ApiContext.cs (technical: connection details from the environment)
-public static class ApiContext
-{
-    public static Task<IAPIRequestContext> CreateAsync(IPlaywright playwright, string header, string variable)
-    {
-        ArgumentNullException.ThrowIfNull(playwright);
-        var key = Environment.GetEnvironmentVariable(variable)
-            ?? throw new InvalidOperationException($"Set the {variable} environment variable.");
-        // API_URL when the API has its own origin; unset or empty (as in CI) falls back to BASE_URL.
-        var apiUrl = Environment.GetEnvironmentVariable("API_URL");
-        return playwright.APIRequest.NewContextAsync(new()
-        {
-            BaseURL = string.IsNullOrEmpty(apiUrl) ? Environment.GetEnvironmentVariable("BASE_URL") : apiUrl,
-            ExtraHTTPHeaders = new Dictionary<string, string> { [header] = key },
-        });
-    }
-}
-```
-
-```csharp
-// src/<Name>.Framework/Apis/OrdersApi.cs (business: operations only, no test framework)
-public sealed class OrdersApi : IAsyncDisposable
-{
-    private readonly IAPIRequestContext _request;
-    private readonly List<string> _created = [];
-
-    private OrdersApi(IAPIRequestContext request) => _request = request;
-
-    public static async Task<OrdersApi> CreateAsync(IPlaywright playwright) =>
-        new(await ApiContext.CreateAsync(playwright, "X-Api-Key", "SHOP_API_KEY"));
-
-    // Actions
-
-    public async Task<string> CreateOrderAsync(string product, int quantity)
-    {
-        var response = await _request.PostAsync("/api/orders", new() { DataObject = new { product, quantity } });
-        var body = response.Ok ? await response.JsonAsync() : null;
-        var id = body?.GetProperty("id").GetString()
-            ?? throw new InvalidOperationException($"POST /api/orders failed with {response.Status}.");
-        _created.Add(id);
-        return id;
-    }
-
-    public async Task DeleteCreatedOrdersAsync()
-    {
-        foreach (var id in _created)
-        {
-            await _request.DeleteAsync($"/api/orders/{id}");
-        }
-
-        _created.Clear();
-    }
-
-    public ValueTask DisposeAsync() => _request.DisposeAsync();
-}
-```
-
-The hooks in the test class, `tests/<Name>.Tests/Ui/OrdersTests.cs`, in NUnit. MSTest v4 uses
-`[TestInitialize]`/`[TestCleanup]` the same way. xUnit v3 overrides `InitializeAsync`/`DisposeAsync`,
-which has its own call order: see [test-classes §2](../../test-classes/SKILL.md#2-layout).
-
-```csharp
-private OrdersApi _orders = null!;
-
-[SetUp]
-public async Task CreateOrdersApiAsync() => _orders = await OrdersApi.CreateAsync(Playwright);
-
-[TearDown]
-public async Task CleanUpAsync()
-{
-    await _orders.DeleteCreatedOrdersAsync();
-    await _orders.DisposeAsync();
-}
-```
-
+- The Api class records each id it creates, and a cleanup action deletes exactly those. Sample: `OrdersApi` in [service-classes §2](../../service-classes/SKILL.md#2-api-classes).
+- Per-test setup creates the Api class from the adapter's `Playwright`; teardown cleans up, then disposes it. Hooks per framework: [test-framework playbook §2–4](../../test-framework/references/playbook.md#2-nunit).
 - Hooks need no `try`: the framework runs teardown after a failure and reports both errors.
 - Cleanup deletes only what this test created, and stays a business method on the Api class.
 
@@ -353,21 +278,7 @@ shorter, never business behaviour of their own.
   - **An assertion.** Checks live in `Verify*` methods (iron law 6). An extension that finds a problem throws. `[no-assertion-in-extension]`
   - **Test data, business types, or a test framework.** Utils sits below the business layer (§1).
 
-```csharp
-// src/<Name>.Framework/Utils/Extensions/ApiResponseExtensions.cs
-public static class ApiResponseExtensions
-{
-    public static async Task<string> ReadIdAsync(this IAPIResponse response, string operation)
-    {
-        ArgumentNullException.ThrowIfNull(response);
-        var body = response.Ok ? await response.JsonAsync() : null;
-        return body?.GetProperty("id").GetString()
-            ?? throw new InvalidOperationException($"{operation} failed with {response.Status}.");
-    }
-}
-```
-
-With it, `OrdersApi.CreateOrderAsync` in §5 shrinks to the request, `ReadIdAsync("POST /api/orders")`, and recording the id.
+The `ReadIdAsync` sample, which raises the "fail loudly" error from a failed response, is in [extension-classes §2](../../extension-classes/SKILL.md#2-choose-the-form).
 
 ## 9. Mapping from the TypeScript conventions
 
