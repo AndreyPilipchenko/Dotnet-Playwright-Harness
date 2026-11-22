@@ -60,7 +60,7 @@ internal static class DashboardCommand
         var tests = Merge(jobs);
         try
         {
-            HtmlReport.Write(output, Render(jobs, tests, BugRecords(root), env));
+            HtmlReport.Write(output, Render(jobs, tests, FailedIn(jobs), BugRecords(root), env));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -87,6 +87,12 @@ internal static class DashboardCommand
                 Cases = [.. g.SelectMany(t => t.Cases).Distinct(StringComparer.Ordinal)],
             })];
 
+    private static Dictionary<string, string> FailedIn(List<Job> jobs) =>
+        jobs.Where(j => j.Run is not null)
+            .SelectMany(j => j.Run!.With(TrxOutcome.Failed).Select(t => (t.Name, Job: j.Name)))
+            .GroupBy(x => x.Name, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => string.Join(", ", g.Select(x => x.Job).Distinct(StringComparer.Ordinal)), StringComparer.Ordinal);
+
     private static (string Layer, string Area) Place(TrxTest test)
     {
         var parts = (test.ClassName ?? string.Empty).Split('.', StringSplitOptions.RemoveEmptyEntries);
@@ -107,7 +113,7 @@ internal static class DashboardCommand
     private static string AreaName(string className) =>
         className.Length > 5 && className.EndsWith("Tests", StringComparison.Ordinal) ? className[..^5] : className;
 
-    private static string Render(List<Job> jobs, List<TrxTest> tests, Dictionary<string, QaRecord> bugs, Func<string, string?> env)
+    private static string Render(List<Job> jobs, List<TrxTest> tests, Dictionary<string, string> failedIn, Dictionary<string, QaRecord> bugs, Func<string, string?> env)
     {
         var failed = tests.Where(t => t.Outcome == TrxOutcome.Failed).ToList();
         var unexplained = failed.Where(t => t.Bugs.Count == 0).ToList();
@@ -143,7 +149,7 @@ internal static class DashboardCommand
                 .Append("</div>\n<p class=\"muted\">A reason is what the project's records say about that test. It doesn't prove why this run failed.</p>\n");
             if (unexplained.Count > 0)
             {
-                body.Append("<h3>No recorded reason</h3>\n").Append(FailureTable(unexplained, bugs));
+                body.Append("<h3>No recorded reason</h3>\n").Append(FailureTable(unexplained, failedIn, bugs));
             }
         }
 
@@ -158,7 +164,7 @@ internal static class DashboardCommand
                 {
                     var inArea = failed.Where(t => Place(t) == (area.Layer, area.Name)).ToList();
                     body.Append(CultureInfo.InvariantCulture, $"<details><summary>{E(area.Layer)} / {E(area.Name)}: {inArea.Count} failure(s)</summary>")
-                        .Append(FailureTable(inArea, bugs)).Append("</details>\n");
+                        .Append(FailureTable(inArea, failedIn, bugs)).Append("</details>\n");
                 }
             }
         }
@@ -205,11 +211,11 @@ internal static class DashboardCommand
         return Table(["Job", "#Tests", "#Passed", "#Failed", "#Skipped"], rows) + "\n" + note;
     }
 
-    private static string FailureTable(List<TrxTest> tests, Dictionary<string, QaRecord> bugs)
+    private static string FailureTable(List<TrxTest> tests, Dictionary<string, string> failedIn, Dictionary<string, QaRecord> bugs)
     {
         var rows = tests.Select(t =>
-            $"<tr><td>{E(t.Name)}</td><td>{E(t.Cases.Count > 0 ? string.Join(", ", t.Cases) : "-")}</td><td>{Reason(t, bugs)}</td></tr>");
-        return Table(["Test", "Case", "Recorded reason"], rows);
+            $"<tr><td>{E(t.Name)}</td><td>{E(failedIn.GetValueOrDefault(t.Name, "-"))}</td><td>{E(t.Cases.Count > 0 ? string.Join(", ", t.Cases) : "-")}</td><td>{Reason(t, bugs)}</td></tr>");
+        return Table(["Test", "Failed in", "Case", "Recorded reason"], rows);
     }
 
     private static string Reason(TrxTest test, Dictionary<string, QaRecord> bugs)
