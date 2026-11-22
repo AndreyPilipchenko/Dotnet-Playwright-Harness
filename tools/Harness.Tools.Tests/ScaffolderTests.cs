@@ -68,6 +68,18 @@ public class ScaffolderTests
         Assert.All([".Result", ".Wait()", "GetResult()"], s => Assert.DoesNotContain(s, text, StringComparison.Ordinal));
     }
 
+    // A killed run never reaches DeleteAll. Its lock dies with it, so the next run deletes its tokens (spike 2026-11-22).
+    [Fact]
+    public void RealTemplates_SignedInSessions_DeletesTheFoldersOfRunsThatDied()
+    {
+        using var dir = new TempDir();
+        Scaffolder.Run(Options("nunit", dir.Path));
+
+        var text = File.ReadAllText(dir.Combine("src/Acme.Shop.Framework/Utils/SignedInSessions.cs"));
+
+        Assert.All(["\".lock\"", "FileShare.None", "DeleteAbandoned()"], s => Assert.Contains(s, text, StringComparison.Ordinal));
+    }
+
     [Fact]
     public void RealTemplates_Secrets_RemembersWhatItReturns()
     {

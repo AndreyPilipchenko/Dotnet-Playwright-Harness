@@ -81,6 +81,9 @@ xUnit doesn't allow overloaded tests (xUnit1024).
   create a session. During the run, tests only read the state files.
 - Each test process keeps its files in its own `.auth/<run-id>/` folder under the output folder. Two
   runs at once, or a retry, never share or delete each other's sessions.
+- A run holds a `.lock` in its folder for as long as it runs. A killed run never deletes its folder,
+  so the next run that signs in deletes it: any folder whose lock is free, and any folder with no lock
+  that is more than a day old. Never delete a folder whose run is still going.
 - **Read-only tests share a role.**
 - **A test that changes the account's own data** (cart, profile, settings) uses its own user, created
   through the API for that test (test-data), or a role kept for that purpose. Otherwise parallel tests
