@@ -321,6 +321,11 @@ unlocked folder that is more than a day old.
   - Kept: a live run (its `.lock` held by another process) and a new folder with no lock.
   - The run's own folder was also gone afterwards, and 9 of 9 tests passed.
 
+**A test the run-once hook doesn't cover (verified 2026-11-22, NUnit).** A `UiTest` class in
+`namespace Elsewhere`, with a role that is in `Roles.cs`, failed in setup with "Role 'probe' was never
+signed in. Either it is not in Setup/Roles.cs, or SignInOnce did not run before this test (…)". The
+probe tests in the root namespace still passed.
+
 ## Traces of failed tests (verified 2026-11-08, Windows, Chromium)
 
 `UiTest` starts tracing when `TRACE_DIR` is set, and saves the zip only when the test failed. A project scaffolded from each template, with one passing and one failing test, left a zip for the failing test only.

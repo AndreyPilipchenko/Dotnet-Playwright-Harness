@@ -22,6 +22,10 @@ public static class Roles
     // borrows the request object and never disposes it.
     //
     // An application without an API sign-in uses its login page instead:
-    // Role.ThroughLoginPage(Customer, page => new LoginPage(page).LoginAsync(Secrets.Get("CUSTOMER_EMAIL"), Secrets.Get("CUSTOMER_PASSWORD"))),
+    // Role.ThroughLoginPage(Customer, async page =>
+    // {
+    //     await new LoginPage(page).LoginAsync(Secrets.Get("CUSTOMER_EMAIL"), Secrets.Get("CUSTOMER_PASSWORD"));
+    //     await new AccountPage(page).VerifyIsOpenAsync(); // the state is saved next, so wait until the session exists
+    // }),
     public static IReadOnlyList<Role> All { get; } = [];
 }
